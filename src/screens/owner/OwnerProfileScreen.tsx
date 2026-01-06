@@ -375,7 +375,7 @@ export const OwnerProfileScreen: React.FC = () => {
                 </View>
               )}
 
-              {business.averageRating !== undefined && (
+              {business.averageRating !== undefined && business.averageRating !== null && (
                 <View style={styles.infoRow}>
                   <Text style={[styles.label, typography.bodySemiBold, { color: colors.mutedForeground }]}>
                     Rating
@@ -383,7 +383,7 @@ export const OwnerProfileScreen: React.FC = () => {
                   <View style={styles.ratingContainer}>
                     <Ionicons name="star" size={16} color={colors.warning} />
                     <Text style={[styles.value, typography.body, { color: colors.foreground, marginLeft: spacing.xs }]}>
-                      {business.averageRating.toFixed(1)} ({business.reviewCount || 0} reviews)
+                      {Number(business.averageRating || 0).toFixed(1)} ({business.reviewCount || 0} reviews)
                     </Text>
                   </View>
                 </View>

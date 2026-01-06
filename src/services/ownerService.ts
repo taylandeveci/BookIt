@@ -56,10 +56,44 @@ export const ownerService = {
 
   // Service Management
   async createService(businessId: string, data: Partial<Service>): Promise<Service> {
-    return await apiClient.post<Service>('/owner/services', {
+    console.log('[ownerService] Creating service with businessId:', businessId);
+    console.log('[ownerService] Service payload:', JSON.stringify(data, null, 2));
+    
+    const payload = {
       businessId,
       ...data,
-    });
+    };
+    
+    console.log('[ownerService] Full request payload:', JSON.stringify(payload, null, 2));
+    console.log('[ownerService] Request URL: /owner/services');
+    
+    try {
+      const result = await apiClient.post<Service>('/owner/services', payload);
+      console.log('[ownerService] Service created successfully:', result);
+      return result;
+    } catch (error: any) {
+      console.error('[ownerService] Create service failed:', error);
+      console.error('[ownerService] Error type:', error.constructor.name);
+      console.error('[ownerService] Error message:', error.message);
+      console.error('[ownerService] Error response status:', error.response?.status);
+      console.error('[ownerService] Error response data:', error.response?.data);
+      console.error('[ownerService] Error request:', error.request ? 'Request was made' : 'No request');
+      console.error('[ownerService] Full error:', JSON.stringify({
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        hasResponse: !!error.response,
+        hasRequest: !!error.request,
+      }, null, 2));
+      
+      // Throw a more descriptive error
+      const errorMsg = error.response?.data?.message 
+        || error.response?.data?.error 
+        || error.message 
+        || 'Failed to create service';
+      
+      throw new Error(errorMsg);
+    }
   },
 
   async updateService(serviceId: string, data: Partial<Service>): Promise<Service> {

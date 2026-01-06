@@ -184,7 +184,8 @@ class ApiClient {
         case 429:
           return new Error('Too many requests. Please wait a moment.');
         case 500:
-          return new Error('Server error. Please try again later.');
+          // Return the actual backend error message instead of generic message
+          return new Error(message || 'Server error. Please try again later.');
         default:
           return new Error(message || `Request failed with status ${status}`);
       }

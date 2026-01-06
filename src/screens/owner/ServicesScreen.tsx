@@ -112,16 +112,40 @@ export const ServicesScreen: React.FC = () => {
   };
 
   const onSubmit = async (data: ServiceFormData) => {
-    if (!business) return;
+    if (!business) {
+      setToast({ message: 'Business not found. Please try again.', type: 'error' });
+      return;
+    }
+
+    console.log('[ServicesScreen] Form data received:', data);
+
+    // Validate numbers before sending
+    const price = parseFloat(data.price);
+    const durationMin = parseInt(data.duration, 10);
+
+    console.log('[ServicesScreen] Parsed values:', { price, durationMin });
+
+    if (isNaN(price) || price <= 0) {
+      setToast({ message: 'Invalid price. Must be a positive number.', type: 'error' });
+      return;
+    }
+
+    if (isNaN(durationMin) || durationMin <= 0) {
+      setToast({ message: 'Invalid duration. Must be a positive number.', type: 'error' });
+      return;
+    }
 
     setActionLoading(true);
     try {
       const serviceData = {
-        name: data.name,
-        description: data.description,
-        price: parseFloat(data.price),
-        durationMin: parseInt(data.duration),
+        name: data.name.trim(),
+        description: data.description.trim(),
+        price: price,
+        durationMin: durationMin,
+        isActive: true, // New services are active by default
       };
+
+      console.log('[ServicesScreen] Sending service data:', serviceData);
 
       if (editingService) {
         await ownerService.updateService(editingService.id, serviceData);
@@ -133,7 +157,10 @@ export const ServicesScreen: React.FC = () => {
       closeModal();
       loadServices();
     } catch (error: any) {
-      setToast({ message: error.message || 'Operation failed', type: 'error' });
+      console.error('[ServicesScreen] Operation failed:', error);
+      // Show the actual backend error message
+      const errorMessage = error.response?.data?.message || error.message || 'Operation failed. Please try again.';
+      setToast({ message: errorMessage, type: 'error' });
     } finally {
       setActionLoading(false);
     }

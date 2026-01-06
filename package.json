@@ -3,15 +3,18 @@
   "version": "1.0.0",
   "main": "expo/AppEntry.js",
   "scripts": {
-    "start": "expo start",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
+    "start": "expo start --go",
+    "android": "expo start --go --android",
+    "ios": "expo start --go --ios",
     "web": "expo start --web",
     "clean:ports": "lsof -ti:3000 | xargs kill -9 2>/dev/null || true && lsof -ti:8081 | xargs kill -9 2>/dev/null || true && lsof -ti:8082 | xargs kill -9 2>/dev/null || true",
     "dev:backend": "lsof -ti:3000 | xargs kill -9 2>/dev/null || true && cd ../BookIT-backend && npm run dev",
-    "dev:all": "npm run clean:ports && concurrently -n \"backend,expo\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm run dev:backend\" \"npm start\"",
+    "dev:expo": "EXPO_NO_METRO_LAZY=1 expo start --go --clear",
+    "dev:expo:ios": "EXPO_NO_METRO_LAZY=1 expo start --go --clear --ios",
+    "dev:all": "npm run clean:ports && sleep 1 && concurrently -n \"backend,expo\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm run dev:backend\" \"npm run dev:expo\"",
     "demo": "npm run clean:ports && sleep 1 && EXPO_NO_METRO_LAZY=1 expo start --go --clear --ios",
-    "demo:full": "npm run clean:ports && sleep 1 && concurrently -n \"backend,expo\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm run dev:backend\" \"EXPO_NO_METRO_LAZY=1 expo start --go --clear --ios\""
+    "demo:full": "npm run clean:ports && sleep 1 && concurrently -n \"backend,expo\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm run dev:backend\" \"EXPO_NO_METRO_LAZY=1 expo start --go --clear --ios\"",
+    "demo:sim": "open -a Simulator && sleep 2 && npm run demo:full"
   },
   "dependencies": {
     "@expo-google-fonts/fraunces": "^0.2.3",
