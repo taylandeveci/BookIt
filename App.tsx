@@ -8,6 +8,7 @@ import { RootNavigator } from './src/navigation/RootNavigator';
 import { useAppStore } from './src/store/appStore';
 import { useAuthStore } from './src/store/authStore';
 import { LoadingScreen } from './src/components/LoadingScreen';
+import './src/localization/i18n';
 
 export default function App() {
   const [fontsLoaded] = useFonts({

@@ -13,11 +13,13 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../store/authStore';
 import { authService } from '../../services/authService';
 import { useTheme } from '../../theme/useTheme';
 import { Button, Input, Chip, BackendHealthCheck } from '../../components';
 import { spacing, typography, borderRadius } from '../../theme/theme';
+import { setAppLanguage, getCurrentLanguage } from '../../localization/i18n';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -28,11 +30,18 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export const AuthScreen: React.FC = () => {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const login = useAuthStore((state) => state.login);
+  const [currentLang, setCurrentLang] = useState<'en' | 'tr'>(getCurrentLanguage());
   
   const [roleTab, setRoleTab] = useState<'user' | 'owner'>('user');
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [loading, setLoading] = useState(false);
+
+  const handleLanguageChange = async (lang: 'en' | 'tr') => {
+    await setAppLanguage(lang);
+    setCurrentLang(lang);
+  };
 
   const {
     control: loginControl,
@@ -183,6 +192,48 @@ export const AuthScreen: React.FC = () => {
       >
         <BackendHealthCheck />
         
+        {/* Language Toggle */}
+        <View style={styles.languageToggle}>
+          <TouchableOpacity
+            style={[
+              styles.languageButton,
+              currentLang === 'en' && { backgroundColor: colors.primary },
+            ]}
+            onPress={() => handleLanguageChange('en')}
+          >
+            <Text
+              style={[
+                styles.languageText,
+                typography.bodySemiBold,
+                currentLang === 'en'
+                  ? { color: colors.primaryForeground }
+                  : { color: colors.mutedForeground },
+              ]}
+            >
+              EN
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.languageButton,
+              currentLang === 'tr' && { backgroundColor: colors.primary },
+            ]}
+            onPress={() => handleLanguageChange('tr')}
+          >
+            <Text
+              style={[
+                styles.languageText,
+                typography.bodySemiBold,
+                currentLang === 'tr'
+                  ? { color: colors.primaryForeground }
+                  : { color: colors.mutedForeground },
+              ]}
+            >
+              TR
+            </Text>
+          </TouchableOpacity>
+        </View>
+        
         <View style={styles.header}>
           <Text
             style={[
@@ -191,7 +242,7 @@ export const AuthScreen: React.FC = () => {
               { color: colors.foreground },
             ]}
           >
-            BookIT
+            {t('auth.title')}
           </Text>
           <Text
             style={[
@@ -200,18 +251,18 @@ export const AuthScreen: React.FC = () => {
               { color: colors.mutedForeground },
             ]}
           >
-            Book appointments with ease
+            {t('auth.subtitle')}
           </Text>
         </View>
 
         <View style={styles.roleSelector}>
           <Chip
-            label="Customer"
+            label={t('auth.customer')}
             selected={roleTab === 'user'}
             onPress={() => setRoleTab('user')}
           />
           <Chip
-            label="Business Owner"
+            label={t('auth.businessOwner')}
             selected={roleTab === 'owner'}
             onPress={() => setRoleTab('owner')}
           />
@@ -219,13 +270,13 @@ export const AuthScreen: React.FC = () => {
 
         <View style={styles.modeSelector}>
           <Chip
-            label="Login"
+            label={t('auth.login')}
             selected={authMode === 'login'}
             onPress={() => setAuthMode('login')}
             variant="primary"
           />
           <Chip
-            label="Register"
+            label={t('auth.register')}
             selected={authMode === 'register'}
             onPress={() => setAuthMode('register')}
             variant="primary"
@@ -239,8 +290,8 @@ export const AuthScreen: React.FC = () => {
               name="email"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
-                  label="Email"
-                  placeholder="your@email.com"
+                  label={t('auth.email')}
+                  placeholder={t('auth.emailPlaceholder')}
                   value={value || ''}
                   onChangeText={onChange}
                   onBlur={onBlur}
@@ -270,8 +321,8 @@ export const AuthScreen: React.FC = () => {
 
                 return (
                   <Input
-                    label="Password"
-                    placeholder="••••••••"
+                    label={t('auth.password')}
+                    placeholder={t('auth.passwordPlaceholder')}
                     value={value || ''}
                     onChangeText={handlePasswordChange}
                     onBlur={onBlur}
@@ -287,7 +338,7 @@ export const AuthScreen: React.FC = () => {
             />
 
             <Button
-              title="Login"
+              title={t('auth.login')}
               onPress={handleLoginSubmit(onLogin)}
               loading={loading}
               fullWidth
@@ -302,7 +353,7 @@ export const AuthScreen: React.FC = () => {
                     { color: colors.mutedForeground },
                   ]}
                 >
-                  Quick Demo Login
+                  {t('auth.demoAccounts')}
                 </Text>
                 <View style={styles.demoButtonRow}>
                   <TouchableOpacity
@@ -314,7 +365,7 @@ export const AuthScreen: React.FC = () => {
                   >
                     <Ionicons name="person" size={16} color={colors.primary} />
                     <Text style={[styles.demoButtonText, typography.body, { color: colors.foreground }]}>
-                      Fill User
+                      {t('auth.customerDemo')}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -326,7 +377,7 @@ export const AuthScreen: React.FC = () => {
                   >
                     <Ionicons name="business" size={16} color={colors.primary} />
                     <Text style={[styles.demoButtonText, typography.body, { color: colors.foreground }]}>
-                      Fill Owner
+                      {t('auth.ownerDemo')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -347,8 +398,8 @@ export const AuthScreen: React.FC = () => {
         ) : (
           <View style={styles.form}>
             <Input
-              label="Full Name *"
-              placeholder="John Doe"
+              label={`${t('auth.fullName')} *`}
+              placeholder={t('auth.fullNamePlaceholder')}
               value={registerForm.fullName}
               onChangeText={(text) => setRegisterForm(prev => ({ ...prev, fullName: text }))}
               error={registerErrors.fullName}
@@ -356,8 +407,8 @@ export const AuthScreen: React.FC = () => {
             />
 
             <Input
-              label="Email *"
-              placeholder="your@email.com"
+              label={`${t('auth.email')} *`}
+              placeholder={t('auth.emailPlaceholder')}
               value={registerForm.email}
               onChangeText={(text) => setRegisterForm(prev => ({ ...prev, email: text }))}
               error={registerErrors.email}
@@ -369,8 +420,8 @@ export const AuthScreen: React.FC = () => {
             />
 
             <Input
-              label="Password *"
-              placeholder="••••••••"
+              label={`${t('auth.password')} *`}
+              placeholder={t('auth.passwordPlaceholder')}
               value={registerForm.password}
               onChangeText={(text) => setRegisterForm(prev => ({ ...prev, password: text }))}
               error={registerErrors.password}
@@ -386,8 +437,8 @@ export const AuthScreen: React.FC = () => {
             />
 
             <Input
-              label="Confirm Password *"
-              placeholder="••••••••"
+              label={`${t('auth.confirmPassword')} *`}
+              placeholder={t('auth.confirmPasswordPlaceholder')}
               value={registerForm.confirmPassword}
               onChangeText={(text) => setRegisterForm(prev => ({ ...prev, confirmPassword: text }))}
               error={registerErrors.confirmPassword}
@@ -403,8 +454,8 @@ export const AuthScreen: React.FC = () => {
             />
 
             <Input
-              label={roleTab === 'owner' ? 'Phone' : 'Phone (Optional)'}
-              placeholder="+1 (555) 123-4567"
+              label={roleTab === 'owner' ? t('auth.phone') : `${t('auth.phone')} (${t('common.optional')})`}
+              placeholder={t('auth.phonePlaceholder')}
               value={registerForm.phone}
               onChangeText={(text) => setRegisterForm(prev => ({ ...prev, phone: text }))}
               error={registerErrors.phone}
@@ -414,8 +465,8 @@ export const AuthScreen: React.FC = () => {
             {roleTab === 'owner' && (
               <>
                 <Input
-                  label="Business Name *"
-                  placeholder="My Salon & Spa"
+                  label={`${t('auth.businessName')} *`}
+                  placeholder={t('auth.businessNamePlaceholder')}
                   value={registerForm.businessName}
                   onChangeText={(text) => setRegisterForm(prev => ({ ...prev, businessName: text }))}
                   error={registerErrors.businessName}
@@ -435,7 +486,7 @@ export const AuthScreen: React.FC = () => {
             )}
 
             <Button
-              title="Register"
+              title={t('auth.register')}
               onPress={onRegister}
               loading={loading}
               fullWidth
@@ -455,6 +506,22 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: spacing.xl,
     justifyContent: 'center',
+  },
+  languageToggle: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: spacing.md,
+    gap: spacing.xs,
+  },
+  languageButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    minWidth: 50,
+    alignItems: 'center',
+  },
+  languageText: {
+    fontSize: typography.sizes.sm,
   },
   header: {
     alignItems: 'center',

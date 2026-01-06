@@ -13,6 +13,7 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
+import { useTranslation } from 'react-i18next';
 import { UserTabParamList, RootStackParamList } from '../../navigation/RootNavigator';
 import { authService } from '../../services/authService';
 import { appointmentService } from '../../services/appointmentService';
@@ -23,6 +24,7 @@ import { useTheme } from '../../theme/useTheme';
 import { Button, Card, EmptyState, LoadingSpinner, Toast } from '../../components';
 import { spacing, typography, borderRadius } from '../../theme/theme';
 import { Appointment, Business, Service } from '../../types';
+import { setAppLanguage, getCurrentLanguage } from '../../localization/i18n';
 
 type NavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<UserTabParamList, 'Profile'>,
@@ -36,6 +38,7 @@ type AppointmentWithDetails = Appointment & {
 
 export const ProfileScreen: React.FC = () => {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
@@ -45,10 +48,16 @@ export const ProfileScreen: React.FC = () => {
   const toggleTheme = useAppStore((state) => state.toggleTheme);
   const notificationsEnabled = useAppStore((state) => state.notificationsEnabled);
   const setNotifications = useAppStore((state) => state.setNotifications);
+  const [currentLang, setCurrentLang] = useState<'en' | 'tr'>(getCurrentLanguage());
   
   const [appointments, setAppointments] = useState<AppointmentWithDetails[]>([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const handleLanguageChange = async (lang: 'en' | 'tr') => {
+    await setAppLanguage(lang);
+    setCurrentLang(lang);
+  };
 
   useFocusEffect(
     React.useCallback(() => {
@@ -146,12 +155,12 @@ export const ProfileScreen: React.FC = () => {
     }
     
     Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
+      t('profile.logout'),
+      t('profile.logoutConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Logout',
+          text: t('profile.logout'),
           style: 'destructive',
           onPress: async () => {
             // Double-check to prevent race conditions
@@ -209,7 +218,7 @@ export const ProfileScreen: React.FC = () => {
 
           <View style={styles.editButtonContainer}>
             <Button
-              title="Edit Profile"
+              title={t('profile.editProfile')}
               onPress={() => navigation.navigate('EditProfile')}
               fullWidth
             />
@@ -227,13 +236,13 @@ export const ProfileScreen: React.FC = () => {
               { color: colors.foreground },
             ]}
           >
-            My Appointments
+            {t('appointments.title')}
           </Text>
           <TouchableOpacity
             onPress={() => navigation.navigate('Appointments')}
           >
             <Text style={[typography.bodySemiBold, { color: colors.primary }]}>
-              View All
+              {t('dashboard.viewAll')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -408,7 +417,7 @@ export const ProfileScreen: React.FC = () => {
             { color: colors.foreground },
           ]}
         >
-          Preferences
+          {t('profile.title')}
         </Text>
 
         <View style={styles.settingRow}>
@@ -419,7 +428,7 @@ export const ProfileScreen: React.FC = () => {
                 { color: colors.foreground },
               ]}
             >
-              Dark Mode
+              {t('profile.theme')}
             </Text>
             <Text
               style={[
@@ -437,6 +446,57 @@ export const ProfileScreen: React.FC = () => {
             trackColor={{ false: colors.muted, true: colors.primary }}
             thumbColor={colors.card}
           />
+        </View>
+
+        <View style={styles.settingRow}>
+          <View style={styles.settingLabel}>
+            <Text
+              style={[
+                typography.bodySemiBold,
+                { color: colors.foreground },
+              ]}
+            >
+              {t('profile.language')}
+            </Text>
+            <View style={styles.languageOptions}>
+              <TouchableOpacity
+                style={[
+                  styles.languageOption,
+                  currentLang === 'en' && { backgroundColor: colors.primary },
+                ]}
+                onPress={() => handleLanguageChange('en')}
+              >
+                <Text
+                  style={[
+                    typography.body,
+                    currentLang === 'en'
+                      ? { color: colors.primaryForeground }
+                      : { color: colors.mutedForeground },
+                  ]}
+                >
+                  {t('profile.english')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.languageOption,
+                  currentLang === 'tr' && { backgroundColor: colors.primary },
+                ]}
+                onPress={() => handleLanguageChange('tr')}
+              >
+                <Text
+                  style={[
+                    typography.body,
+                    currentLang === 'tr'
+                      ? { color: colors.primaryForeground }
+                      : { color: colors.mutedForeground },
+                  ]}
+                >
+                  {t('profile.turkish')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
         <View style={styles.settingRow}>
@@ -470,7 +530,7 @@ export const ProfileScreen: React.FC = () => {
 
       <View style={styles.logoutSection}>
         <Button
-          title={isLoggingOut ? "Logging out..." : "Logout"}
+          title={isLoggingOut ? t('common.loading') : t('profile.logout')}
           variant="destructive"
           onPress={handleLogout}
           fullWidth
@@ -569,6 +629,18 @@ const styles = StyleSheet.create({
   settingDescription: {
     fontSize: typography.sizes.sm,
     marginTop: spacing.xs,
+  },
+  languageOptions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  languageOption: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
   logoutSection: {
     marginTop: spacing.lg,
