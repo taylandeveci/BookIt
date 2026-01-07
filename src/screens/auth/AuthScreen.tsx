@@ -78,9 +78,19 @@ export const AuthScreen: React.FC = () => {
   const onLogin = async (data: LoginFormData) => {
     setLoading(true);
     try {
-      await login(data);
+      // Map roleTab to expected UserRole
+      const expectedRole = roleTab === 'user' ? 'USER' : 'OWNER';
+      await login(data, expectedRole);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Login failed');
+      // Check if it's a role mismatch error
+      if (error.message === 'Role mismatch') {
+        const errorKey = error.expectedRole === 'USER' 
+          ? 'auth.roleMismatchCustomer' 
+          : 'auth.roleMismatchOwner';
+        Alert.alert(t('common.error'), t(errorKey));
+      } else {
+        Alert.alert(t('common.error'), error.message || t('auth.loginError'));
+      }
     } finally {
       setLoading(false);
     }
@@ -516,7 +526,7 @@ const styles = StyleSheet.create({
   languageButton: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
+    borderRadius: borderRadius.pill,
     minWidth: 50,
     alignItems: 'center',
   },

@@ -47,7 +47,9 @@
     "registerError": "Kayıt başarısız",
     "demoAccounts": "Demo Hesaplar",
     "customerDemo": "Müşteri Demo",
-    "ownerDemo": "İşletme Demo"
+    "ownerDemo": "İşletme Demo",
+    "roleMismatchCustomer": "Bu hesap İşletme Sahibi hesabı. Lütfen İşletme Sahibi girişine geçin.",
+    "roleMismatchOwner": "Bu hesap Müşteri hesabı. Lütfen Müşteri girişine geçin."
   },
   "navigation": {
     "dashboard": "Panel",

@@ -12,6 +12,7 @@ BookIT now supports full app localization with English (EN) and Turkish (TR) lan
 ## Language Detection
 
 The app automatically detects and sets the language based on:
+
 1. Previously saved user preference (stored in AsyncStorage)
 2. Device locale (if Turkish device → TR, otherwise → EN)
 3. Fallback to English if none of the above applies
@@ -19,11 +20,13 @@ The app automatically detects and sets the language based on:
 ## Language Toggle Locations
 
 ### 1. Auth/Welcome Screen
+
 - Small EN | TR toggle at the top-right of the screen
 - Changes take effect immediately
 - Persists across app restarts
 
 ### 2. Profile Screen
+
 - Language selector under the Theme selector
 - Same UI/UX as the Theme selector
 - Options: "English" and "Türkçe"
@@ -57,23 +60,21 @@ src/localization/
 #### Basic Translation
 
 ```typescript
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 
 export const MyComponent = () => {
   const { t } = useTranslation();
-  
-  return (
-    <Text>{t('common.loading')}</Text>
-  );
+
+  return <Text>{t("common.loading")}</Text>;
 };
 ```
 
 #### Changing Language
 
 ```typescript
-import { setAppLanguage } from '../../localization/i18n';
+import { setAppLanguage } from "../../localization/i18n";
 
-const handleLanguageChange = async (lang: 'en' | 'tr') => {
+const handleLanguageChange = async (lang: "en" | "tr") => {
   await setAppLanguage(lang);
 };
 ```
@@ -81,7 +82,7 @@ const handleLanguageChange = async (lang: 'en' | 'tr') => {
 ####Getting Current Language
 
 ```typescript
-import { getCurrentLanguage } from '../../localization/i18n';
+import { getCurrentLanguage } from "../../localization/i18n";
 
 const currentLang = getCurrentLanguage(); // 'en' or 'tr'
 ```
@@ -91,26 +92,32 @@ const currentLang = getCurrentLanguage(); // 'en' or 'tr'
 Translation keys are organized by feature/screen:
 
 ### Common
+
 - `common.loading`, `common.cancel`, `common.save`, etc.
 - Used across multiple screens
 
 ### Auth
+
 - `auth.title`, `auth.login`, `auth.register`, etc.
 - Login and registration related strings
 
 ### Navigation
+
 - `navigation.dashboard`, `navigation.profile`, etc.
 - Tab bar and navigation labels
 
 ### Dashboard
+
 - `dashboard.welcome`, `dashboard.todaysAppointments`, etc.
 - Dashboard-specific strings
 
 ### Profile
+
 - `profile.title`, `profile.theme`, `profile.language`, etc.
 - Profile and settings strings
 
 ### Services, Requests, Employees, Appointments, Reviews, etc.
+
 - Each feature has its own namespace
 
 ## Adding New Translations
@@ -153,16 +160,19 @@ const { t } = useTranslation();
 ## Screens Status
 
 ### ✅ Fully Translated
+
 - [x] AuthScreen (with language toggle)
 - [ ] ProfileScreen (pending language selector)
 - [ ] DashboardScreen
 - [ ] Other screens (see Remaining Work)
 
 ### 🔄 Partially Translated
+
 - Most screens have translation keys defined in JSON files
 - Need to replace hardcoded strings with `t()` calls
 
 ### ❌ Not Yet Translated
+
 - Some components may still have hardcoded strings
 - Navigation headers need translation support
 
@@ -171,11 +181,13 @@ const { t } = useTranslation();
 To complete the localization implementation:
 
 1. **Add Language Selector to ProfileScreen**
+
    - Add below theme selector
    - Match existing UI style
    - Use `setAppLanguage()` to change language
 
 2. **Update All Screens with useTranslation()**
+
    - Replace all hardcoded strings with `t('key')` calls
    - Screens to update:
      - ProfileScreen
@@ -194,11 +206,13 @@ To complete the localization implementation:
      - BusinessReviewsScreen
 
 3. **Update Navigation Labels**
+
    - File: `src/navigation/RootNavigator.tsx`
    - Update tab labels to use `t()` or `i18next.t()`
    - Update screen titles
 
 4. **Update Components**
+
    - Button, Input, and other reusable components
    - Replace any hardcoded strings with translation keys
 
@@ -209,11 +223,13 @@ To complete the localization implementation:
 ## Backend Messages
 
 The following strings are intentionally NOT translated (server-provided):
+
 - API error messages from backend
 - Validation errors from backend (when specific)
 - Server-side generated messages
 
 Default error messages (when backend doesn't provide details) ARE translated using:
+
 - `common.error`
 - `common.tryAgain`
 - Feature-specific error keys
@@ -237,6 +253,7 @@ Default error messages (when backend doesn't provide details) ARE translated usi
 ### Language not changing
 
 Check:
+
 1. AsyncStorage permissions
 2. i18n initialization in App.tsx
 3. Component is using `useTranslation()` hook
@@ -245,6 +262,7 @@ Check:
 ### Translation key not found
 
 Check:
+
 1. Key exists in both language files
 2. Key path is correct (e.g., `auth.login` not `login`)
 3. No typos in key name
@@ -253,6 +271,7 @@ Check:
 ### Language resets on app restart
 
 Check:
+
 1. AsyncStorage is properly saving (`APP_LANGUAGE` key)
 2. Language detector is running in i18n.ts
 3. No errors in language detector logic
@@ -295,7 +314,7 @@ import { useTranslation } from 'react-i18next';
 
 export const BookingScreen = () => {
   const { t } = useTranslation();
-  
+
   return (
     <View>
       <Text style={styles.title}>{t('booking.title')}</Text>
@@ -309,12 +328,14 @@ export const BookingScreen = () => {
 ## Language-Specific Considerations
 
 ### Turkish
+
 - Use proper Turkish characters (ı, ğ, ü, ş, ö, ç)
 - Follow Turkish grammar rules
 - Formal tone for professional contexts
 - Informal tone is acceptable for in-app messages
 
 ### English
+
 - Use American English spelling
 - Keep messages concise and clear
 - Professional but friendly tone
@@ -322,6 +343,7 @@ export const BookingScreen = () => {
 ## Support
 
 For questions or issues with localization:
+
 1. Check this documentation
 2. Review example implementations in AuthScreen
 3. Check translation key definitions in locale files

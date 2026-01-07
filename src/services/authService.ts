@@ -81,9 +81,8 @@ export const authService = {
     
     const normalized = normalizeAuthResponse(response);
 
-    // Store tokens securely
-    await SecureStore.setItemAsync('accessToken', normalized.accessToken);
-    await SecureStore.setItemAsync('refreshToken', normalized.refreshToken);
+    // NOTE: Do NOT store tokens here - let the caller validate role first
+    // Tokens will be stored by authStore after role validation
 
     return normalized;
   },

@@ -47,7 +47,9 @@
     "registerError": "Registration failed",
     "demoAccounts": "Demo Accounts",
     "customerDemo": "Customer Demo",
-    "ownerDemo": "Owner Demo"
+    "ownerDemo": "Owner Demo",
+    "roleMismatchCustomer": "This account is a Business Owner account. Please switch to Business Owner login.",
+    "roleMismatchOwner": "This account is a Customer account. Please switch to Customer login."
   },
   "navigation": {
     "dashboard": "Dashboard",

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
-import { User } from '../types';
+import { User, UserRole } from '../types';
 import { authService } from '../services/authService';
 import { setLogoutCallback, getIsLoggingOut, setIsLoggingOut } from '../services/apiClient';
 import { AxiosError } from 'axios';
@@ -12,7 +12,7 @@ interface AuthState {
   isLoggingOut: boolean;
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
-  login: (credentials: { email: string; password: string }) => Promise<void>;
+  login: (credentials: { email: string; password: string }, expectedRole?: UserRole) => Promise<void>;
   logout: () => Promise<void>;
   hydrate: () => Promise<void>;
 }
@@ -32,10 +32,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setUser: (user) => set({ user }),
   setToken: (token) => set({ token }),
 
-  login: async (credentials) => {
+  login: async (credentials, expectedRole) => {
     try {
       const response = await authService.login(credentials);
       console.log('AUTH_SET_USER_ROLE', response.user.role);
+      
+      // Validate role if expectedRole is provided
+      if (expectedRole && response.user.role !== expectedRole) {
+        // Role mismatch - throw error with role info for UI to handle
+        const error = new Error('Role mismatch') as any;
+        error.expectedRole = expectedRole;
+        error.actualRole = response.user.role;
+        throw error;
+      }
+      
+      // Role matches or no validation needed - store tokens and set user
+      await SecureStore.setItemAsync('accessToken', response.accessToken);
+      await SecureStore.setItemAsync('refreshToken', response.refreshToken);
       set({ user: response.user, token: response.accessToken });
     } catch (error) {
       console.error('Failed to login:', error);
