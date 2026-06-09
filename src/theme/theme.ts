@@ -1,7 +1,7 @@
 export const lightTheme = {
   background: '#FDFCF8',
   foreground: '#2C2C24',
-  primary: '#5D7052',
+  primary: '#4A5E6A',
   primaryForeground: '#F3F4F1',
   secondary: '#C18C5D',
   secondaryForeground: '#FFFFFF',
@@ -25,7 +25,7 @@ export const lightTheme = {
 export const darkTheme = {
   background: '#1A1A16',
   foreground: '#F3F4F1',
-  primary: '#7A9570',
+  primary: '#6B8BA4',
   primaryForeground: '#1A1A16',
   secondary: '#D4A574',
   secondaryForeground: '#1A1A16',
@@ -96,21 +96,21 @@ export const typography = {
 export const shadows = {
   light: {
     sm: {
-      shadowColor: '#5D7052',
+      shadowColor: '#4A5E6A',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.08,
       shadowRadius: 4,
       elevation: 2,
     },
     md: {
-      shadowColor: '#5D7052',
+      shadowColor: '#4A5E6A',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.12,
       shadowRadius: 8,
       elevation: 4,
     },
     lg: {
-      shadowColor: '#5D7052',
+      shadowColor: '#4A5E6A',
       shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.16,
       shadowRadius: 16,

@@ -25,4 +25,8 @@ export const appointmentService = {
   async getAppointmentById(appointmentId: string): Promise<Appointment> {
     return await apiClient.get<Appointment>(`/appointments/${appointmentId}`);
   },
+
+  async confirmArrival(appointmentId: string, arrived: boolean): Promise<Appointment> {
+    return await apiClient.post<Appointment>(`/appointments/${appointmentId}/confirm-arrival`, { arrived });
+  },
 };

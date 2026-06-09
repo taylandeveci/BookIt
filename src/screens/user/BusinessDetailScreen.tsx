@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,18 @@ import {
   TouchableOpacity,
   Modal,
   Pressable,
+  Linking,
+  Platform,
+  ActivityIndicator,
+  FlatList,
+  Image,
+  Dimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import MapView, { Marker } from 'react-native-maps';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '../../lib/queryKeys';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
@@ -35,23 +45,29 @@ import {
   EmptyState,
   Toast,
 } from '../../components';
+import { useTranslation } from 'react-i18next';
 import { spacing, typography, borderRadius } from '../../theme/theme';
+import { formatCurrency } from '../../lib/formatCurrency';
+import { useBusinessLocation } from '../../hooks/useBusinessLocation';
+import { useNotificationStore } from '../../store/notificationStore';
 
 type RouteParams = RouteProp<RootStackParamList, 'BusinessDetail'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
+
 export const BusinessDetailScreen: React.FC = () => {
   const { colors, shadows } = useTheme();
+  const { t, i18n } = useTranslation();
   const route = useRoute<RouteParams>();
   const navigation = useNavigation<NavigationProp>();
   const user = useAuthStore((state) => state.user);
+  const insets = useSafeAreaInsets();
   
-  const [business, setBusiness] = useState<Business | null>(null);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
-  
+  const queryClient = useQueryClient();
+  const addNotification = useNotificationStore((s) => s.addNotification);
+  const businessId = route.params.businessId;
+
   // Booking state
   const [bookingStep, setBookingStep] = useState(0);
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
@@ -59,128 +75,154 @@ export const BusinessDetailScreen: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  useEffect(() => {
-    loadBusinessData();
-  }, [route.params.businessId]);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 });
+  const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
+    if (viewableItems.length > 0) setPhotoIndex(viewableItems[0].index ?? 0);
+  }, []);
 
-  useEffect(() => {
-    if (selectedEmployee && selectedDate) {
-      loadTimeSlots();
-    }
-  }, [selectedEmployee, selectedDate]);
+  const { data: business, isLoading: businessLoading } = useQuery({
+    queryKey: queryKeys.businesses.detail(businessId),
+    queryFn: () => businessService.getBusiness(businessId),
+  });
 
-  const loadBusinessData = async () => {
-    try {
-      setLoading(true);
-      const [businessData, employeesData, servicesData, reviewsData] = await Promise.all([
-        businessService.getBusiness(route.params.businessId),
-        businessService.getEmployees(route.params.businessId),
-        businessService.getServices(route.params.businessId),
-        reviewService.getReviews(route.params.businessId),
-      ]);
-      
-      setBusiness(businessData || null);
-      setEmployees(Array.isArray(employeesData) ? employeesData : []);
-      setServices(Array.isArray(servicesData) ? servicesData : []);
-      setReviews(Array.isArray(reviewsData) ? reviewsData : []);
-    } catch (error: any) {
-      console.error('Failed to load business:', error);
-      setToast({ message: error.message || 'Failed to load business details', type: 'error' });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: employees = [], isLoading: employeesLoading } = useQuery({
+    queryKey: queryKeys.businesses.employees(businessId),
+    queryFn: async () => {
+      const data = await businessService.getEmployees(businessId);
+      return Array.isArray(data) ? data as Employee[] : [];
+    },
+  });
 
-  const loadTimeSlots = async () => {
-    if (!selectedEmployee || !selectedDate) return;
-    
-    try {
-      setLoadingSlots(true);
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      const slots = await businessService.getAvailableTimeSlots(
-        route.params.businessId,
-        selectedEmployee,
-        dateStr
-      );
-      setTimeSlots(Array.isArray(slots) ? slots : []);
-    } catch (error: any) {
-      console.error('[BusinessDetail] Failed to load time slots:', error);
-      
-      // If endpoint doesn't exist (404), generate default time slots
-      if (error.message?.includes('Route not found') || error.message?.includes('404')) {
-        console.log('[BusinessDetail] Time slots endpoint not available, generating default slots');
-        // Generate default hourly slots from 9 AM to 5 PM
-        const defaultSlots = [];
+  const { data: services = [], isLoading: servicesLoading } = useQuery({
+    queryKey: queryKeys.businesses.services(businessId),
+    queryFn: async () => {
+      const data = await businessService.getServices(businessId);
+      return Array.isArray(data) ? data as Service[] : [];
+    },
+  });
+
+  const { data: reviews = [], isLoading: reviewsLoading } = useQuery({
+    queryKey: queryKeys.reviews.forBusiness(businessId),
+    queryFn: async () => {
+      const data = await reviewService.getReviews(businessId);
+      return Array.isArray(data) ? data as Review[] : [];
+    },
+  });
+
+  const loading = businessLoading || employeesLoading || servicesLoading || reviewsLoading;
+
+  const bizLocation = useBusinessLocation(business ?? undefined);
+
+  const dateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : '';
+  const { data: timeSlots = [], isFetching: loadingSlots } = useQuery({
+    queryKey: queryKeys.businesses.timeSlots(businessId, dateStr, selectedEmployee ?? '', selectedService ?? ''),
+    queryFn: async () => {
+      if (!selectedEmployee || !selectedService || !selectedDate) return [];
+      try {
+        const slots = await businessService.getAvailableTimeSlots(
+          businessId,
+          selectedEmployee,
+          dateStr,
+          selectedService
+        );
+        return Array.isArray(slots) ? slots : [];
+      } catch (error: any) {
+        const defaultSlots: TimeSlot[] = [];
         for (let hour = 9; hour <= 17; hour++) {
           defaultSlots.push({ time: `${hour}:00`, available: true });
           defaultSlots.push({ time: `${hour}:30`, available: true });
         }
-        setTimeSlots(defaultSlots);
-      } else {
-        setToast({ message: 'Could not load time slots. Using default availability.', type: 'error' });
-        // Still provide some slots even on error
-        const defaultSlots = [];
-        for (let hour = 9; hour <= 17; hour++) {
-          defaultSlots.push({ time: `${hour}:00`, available: true });
-        }
-        setTimeSlots(defaultSlots);
+        return defaultSlots;
       }
-    } finally {
-      setLoadingSlots(false);
-    }
-  };
+    },
+    enabled: !!selectedEmployee && !!selectedService && !!selectedDate,
+  });
 
   const formatDate = (date: Date): string => {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${days[date.getDay()]}, ${months[date.getMonth()]} ${date.getDate()}`;
+    const locale = i18n.language === 'tr' ? 'tr-TR' : 'en-US';
+    const day = new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(date);
+    const month = new Intl.DateTimeFormat(locale, { month: 'short' }).format(date);
+    return `${day}, ${month} ${date.getDate()}`;
   };
 
   const handleBookAppointment = async () => {
     if (!user) {
-      Alert.alert('Login Required', 'Please login to book an appointment', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Login', onPress: () => navigation.navigate('Auth') },
+      Alert.alert(t('businessDetail.loginRequired'), t('businessDetail.loginRequiredDesc'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('auth.login'), onPress: () => navigation.navigate('Auth') },
       ]);
       return;
     }
 
     if (!selectedEmployee || !selectedService || !selectedDate || !selectedTime) {
-      Alert.alert('Error', 'Please complete all booking steps');
+      Alert.alert(t('common.error'), t('businessDetail.bookingStepsIncomplete'));
       return;
     }
 
     try {
       setBookingLoading(true);
-      const dateStr = selectedDate.toISOString().split('T')[0];
+      const bookingDateStr = selectedDate.toISOString().split('T')[0];
       await appointmentService.createAppointment(user.id, {
-        businessId: route.params.businessId,
+        businessId,
         employeeId: selectedEmployee,
         serviceId: selectedService,
-        date: dateStr,
+        date: bookingDateStr,
         timeSlot: selectedTime,
       });
-      
-      setToast({ message: 'Appointment requested successfully!', type: 'success' });
-      
+
+      setToast({ message: t('businessDetail.bookingSuccess'), type: 'success' });
+
+      // Notify the employee about the new booking request
+      const emp = (employees as Employee[]).find((e) => e.id === selectedEmployee);
+      if (emp?.userId) {
+        const dateStr = selectedDate
+          ? selectedDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) + ' · ' + selectedTime
+          : '';
+        const svc = (services as Service[]).find((s) => s.id === selectedService);
+        addNotification({
+          type: 'booking_pending',
+          title: t('notifications.newBookingRequest'),
+          body: `${user.name} — ${svc?.name ?? ''} — ${dateStr}`,
+          userId: emp.userId,
+        });
+      }
+      // Notify the owner about the new booking request
+      if (business?.ownerId) {
+        const dateStr = selectedDate
+          ? selectedDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) + ' · ' + selectedTime
+          : '';
+        const svc = (services as Service[]).find((s) => s.id === selectedService);
+        addNotification({
+          type: 'booking_pending',
+          title: t('notifications.newBookingRequest'),
+          body: `${user.name} — ${svc?.name ?? ''} — ${dateStr}`,
+          userId: business.ownerId,
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: queryKeys.bookings.customerAll });
+      queryClient.invalidateQueries({ queryKey: queryKeys.bookings.ownerPending });
+      queryClient.invalidateQueries({ queryKey: queryKeys.bookings.ownerAll });
+      queryClient.invalidateQueries({ queryKey: queryKeys.bookings.employeeAll });
+      queryClient.invalidateQueries({ queryKey: queryKeys.bookings.employeeByDate(bookingDateStr) });
+      queryClient.invalidateQueries({ queryKey: ['businesses', businessId, 'timeSlots'] });
+
       // Reset booking state
       setBookingStep(0);
       setSelectedEmployee(null);
       setSelectedService(null);
       setSelectedDate(null);
       setSelectedTime('');
-      
-      // Navigate to Appointments screen after short delay
+
       setTimeout(() => {
         navigation.navigate('UserTabs');
       }, 1500);
     } catch (error: any) {
-      setToast({ message: error.message || 'Failed to book appointment', type: 'error' });
+      setToast({ message: error.message || t('businessDetail.bookingError'), type: 'error' });
     } finally {
       setBookingLoading(false);
     }
@@ -198,8 +240,8 @@ export const BusinessDetailScreen: React.FC = () => {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <EmptyState
-          title="Business not found"
-          description="This business may no longer be available"
+          title={t('businessDetail.notFound')}
+          description={t('businessDetail.notFoundDesc')}
         />
       </View>
     );
@@ -216,14 +258,44 @@ export const BusinessDetailScreen: React.FC = () => {
       )}
       
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View
-          style={[
-            styles.imageGallery,
-            { backgroundColor: colors.muted, borderRadius: borderRadius.xl },
-          ]}
-        >
-          <Ionicons name="business" size={48} color={colors.mutedForeground} />
-        </View>
+        {/* Photo gallery — base64 storage; migrate to Supabase Storage URLs in a future pass */}
+        {business.media && business.media.length > 0 ? (
+          <View>
+            <FlatList
+              data={business.media}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => item.id}
+              onViewableItemsChanged={onViewableItemsChanged}
+              viewabilityConfig={viewabilityConfig.current}
+              renderItem={({ item }) => (
+                <Image
+                  source={{ uri: item.url }}
+                  style={{ width: SCREEN_WIDTH, height: 220 }}
+                  resizeMode="cover"
+                />
+              )}
+            />
+            {business.media.length > 1 && (
+              <View style={styles.dotRow}>
+                {business.media.map((_, i) => (
+                  <View
+                    key={i}
+                    style={[styles.dot, { backgroundColor: i === photoIndex ? colors.primary : colors.muted }]}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        ) : (
+          <View style={[styles.imageGallery, { backgroundColor: colors.muted, borderRadius: borderRadius.xl }]}>
+            <Ionicons name="image-outline" size={40} color={colors.mutedForeground} />
+            <Text style={[typography.body, { fontSize: typography.sizes.sm, color: colors.mutedForeground, marginTop: spacing.sm }]}>
+              Fotoğraf yok
+            </Text>
+          </View>
+        )}
 
         <View style={styles.content}>
           <Text
@@ -236,10 +308,28 @@ export const BusinessDetailScreen: React.FC = () => {
             {business.name}
           </Text>
 
+          {business.tags && business.tags.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.tagsRow}
+            >
+              {business.tags.map((tag) => (
+                <View
+                  key={tag}
+                  style={[styles.tagChip, { backgroundColor: colors.muted, borderRadius: borderRadius.pill }]}
+                >
+                  <Text style={[typography.body, { fontSize: typography.sizes.xs, color: colors.mutedForeground }]}>
+                    {tag}
+                  </Text>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+
           <TouchableOpacity
             style={styles.ratingRow}
             onPress={() => {
-              console.log('Opening reviews for business:', business.id);
               navigation.navigate('BusinessReviews', {
                 businessId: business.id,
                 businessName: business.name,
@@ -256,7 +346,7 @@ export const BusinessDetailScreen: React.FC = () => {
                 { color: colors.mutedForeground },
               ]}
             >
-              {Number(business.averageRating || 0).toFixed(1)} ({business.reviewCount || 0} reviews)
+              {Number(business.averageRating || 0).toFixed(1)} {t('businessDetail.reviewCount', { count: business.reviewCount || 0 })}
             </Text>
           </TouchableOpacity>
 
@@ -270,14 +360,20 @@ export const BusinessDetailScreen: React.FC = () => {
             {business.description}
           </Text>
 
-          <View style={styles.infoRow}>
+          <Pressable style={styles.infoRow} onPress={bizLocation.openMapModal}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
               <Ionicons name="location" size={16} color={colors.mutedForeground} />
-              <Text style={[typography.bodySemiBold, { color: colors.foreground }]}>
+              <Text style={[typography.bodySemiBold, { color: colors.foreground, flex: 1 }]}>
                 {business.address}
               </Text>
+              <Ionicons name="map-outline" size={14} color={colors.primary} />
             </View>
-          </View>
+            {bizLocation.distance !== null && (
+              <Text style={[typography.body, { color: colors.mutedForeground, fontSize: typography.sizes.xs, marginLeft: 20, marginTop: spacing.xs }]}>
+                {bizLocation.distance}
+              </Text>
+            )}
+          </Pressable>
 
           <View style={styles.infoRow}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
@@ -297,7 +393,7 @@ export const BusinessDetailScreen: React.FC = () => {
                 { color: colors.foreground },
               ]}
             >
-              Book an Appointment
+              {t('businessDetail.bookAppointment')}
             </Text>
 
             {/* Step 1: Select Employee */}
@@ -308,7 +404,7 @@ export const BusinessDetailScreen: React.FC = () => {
                 { color: colors.foreground },
               ]}
             >
-              1. Choose a Staff Member
+              {t('businessDetail.step1Staff')}
             </Text>
             <View style={styles.optionsGrid}>
               {(Array.isArray(employees) ? employees : []).map((emp) => (
@@ -334,7 +430,7 @@ export const BusinessDetailScreen: React.FC = () => {
                     { color: colors.foreground },
                   ]}
                 >
-                  2. Choose a Service
+                  {t('businessDetail.step2Service')}
                 </Text>
                 <View style={styles.servicesList}>
                   {(Array.isArray(services) ? services : []).map((svc) => (
@@ -369,7 +465,7 @@ export const BusinessDetailScreen: React.FC = () => {
                             { color: colors.mutedForeground },
                           ]}
                         >
-                          ${Number(svc.price || 0).toFixed(2)} • {svc.durationMin || 0} min
+                          {formatCurrency(Number(svc.price || 0))} • {svc.durationMin || 0} {t('common.min')}
                         </Text>
                       </Card>
                     </TouchableOpacity>
@@ -388,7 +484,7 @@ export const BusinessDetailScreen: React.FC = () => {
                     { color: colors.foreground },
                   ]}
                 >
-                  3. Pick a Date
+                  {t('businessDetail.step3Date')}
                 </Text>
                 
                 <Pressable
@@ -412,7 +508,7 @@ export const BusinessDetailScreen: React.FC = () => {
                       },
                     ]}
                   >
-                    {selectedDate ? formatDate(selectedDate) : 'Select a date'}
+                    {selectedDate ? formatDate(selectedDate) : t('businessDetail.selectDate')}
                   </Text>
                   <Ionicons
                     name="calendar-outline"
@@ -433,7 +529,7 @@ export const BusinessDetailScreen: React.FC = () => {
                     { color: colors.foreground },
                   ]}
                 >
-                  4. Choose a Time
+                  {t('businessDetail.step4Time')}
                 </Text>
                 {loadingSlots ? (
                   <LoadingSpinner size="small" />
@@ -460,7 +556,7 @@ export const BusinessDetailScreen: React.FC = () => {
 
             {selectedTime && (
               <Button
-                title="Confirm Booking"
+                title={t('businessDetail.confirmBooking')}
                 onPress={handleBookAppointment}
                 loading={bookingLoading}
                 fullWidth
@@ -474,8 +570,7 @@ export const BusinessDetailScreen: React.FC = () => {
             <TouchableOpacity
               style={styles.reviewsHeader}
               onPress={() => {
-                console.log('Opening reviews for business:', business.id);
-                navigation.navigate('BusinessReviews', {
+                  navigation.navigate('BusinessReviews', {
                   businessId: business.id,
                   businessName: business.name,
                   ratingAvg: Number(business.averageRating) || 0,
@@ -490,22 +585,25 @@ export const BusinessDetailScreen: React.FC = () => {
                   { color: colors.foreground },
                 ]}
               >
-                Reviews ({reviews.length})
+                {t('businessDetail.reviewsSection', { count: reviews.length })}
               </Text>
               <Text style={[typography.bodySemiBold, { color: colors.primary }]}>
-                See all
+                {t('common.seeAll')}
               </Text>
             </TouchableOpacity>
 
             {reviews.length === 0 ? (
               <EmptyState
                 icon="star"
-                title="No reviews yet"
-                description="Be the first to review this business"
+                title={t('reviews.noReviews')}
+                description={t('reviews.beFirst')}
               />
             ) : (
               (Array.isArray(reviews) ? reviews : []).slice(0, 2).map((review) => (
                 <Card key={review.id} style={styles.reviewCard}>
+                  <Text style={[typography.bodySemiBold, { color: colors.foreground, fontSize: typography.sizes.sm, marginBottom: spacing.xs }]}>
+                    {review.user?.fullName || t('common.anonymous')}
+                  </Text>
                   <RatingStars rating={review.rating} size={16} />
                   <Text
                     style={[
@@ -514,7 +612,7 @@ export const BusinessDetailScreen: React.FC = () => {
                       { color: colors.foreground },
                     ]}
                   >
-                    {review.comment}
+                    {review.commentText || review.comment}
                   </Text>
                   <Text
                     style={[
@@ -531,6 +629,82 @@ export const BusinessDetailScreen: React.FC = () => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Location Map Modal */}
+      <Modal
+        visible={bizLocation.modalVisible}
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={bizLocation.closeMapModal}
+      >
+        <View style={styles.mapModalContainer}>
+          {bizLocation.isLocating ? (
+            <View style={[StyleSheet.absoluteFill, styles.mapModalLoading, { backgroundColor: colors.background }]}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : (
+            <MapView
+              style={StyleSheet.absoluteFill}
+              initialRegion={{
+                latitude: bizLocation.coordinates?.latitude ?? 39.9208,
+                longitude: bizLocation.coordinates?.longitude ?? 32.8541,
+                latitudeDelta: 0.005,
+                longitudeDelta: 0.005,
+              }}
+              showsUserLocation
+            >
+              {bizLocation.coordinates ? (
+                <Marker
+                  coordinate={bizLocation.coordinates}
+                  tracksViewChanges={false}
+                >
+                  <View style={styles.markerContainer}>
+                    <Ionicons name="location" size={20} color="#4A5E6A" />
+                  </View>
+                </Marker>
+              ) : null}
+            </MapView>
+          )}
+
+          <TouchableOpacity
+            style={[styles.mapCloseBtn, { backgroundColor: colors.card, top: insets.top + 12 }, shadows.sm]}
+            onPress={bizLocation.closeMapModal}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="close" size={20} color={colors.foreground} />
+          </TouchableOpacity>
+
+          <View style={[styles.mapInfoBar, { backgroundColor: colors.card, paddingBottom: insets.bottom + spacing.md }, shadows.lg]}>
+            <Text style={[typography.headingSemiBold, { color: colors.foreground, fontSize: typography.sizes.md, marginBottom: spacing.xs }]}>
+              {business.name}
+            </Text>
+            {business.address ? (
+              <Text style={[typography.body, { color: colors.mutedForeground, fontSize: typography.sizes.sm, marginBottom: spacing.sm }]}>
+                {business.address}
+              </Text>
+            ) : null}
+            {bizLocation.distance !== null && (
+              <Text style={[typography.body, { color: colors.mutedForeground, fontSize: typography.sizes.sm, marginBottom: spacing.md }]}>
+                {bizLocation.distance}
+              </Text>
+            )}
+            <Button
+              title={t('businessDetail.getDirections')}
+              onPress={() => {
+                if (!bizLocation.coordinates) return;
+                const { latitude: lat, longitude: lng } = bizLocation.coordinates;
+                const url =
+                  Platform.OS === 'ios'
+                    ? `maps://app?daddr=${lat},${lng}`
+                    : `google.navigation:q=${lat},${lng}`;
+                Linking.openURL(url);
+              }}
+              fullWidth
+            />
+          </View>
+        </View>
+      </Modal>
 
       {/* Calendar Modal */}
       <Modal
@@ -558,7 +732,7 @@ export const BusinessDetailScreen: React.FC = () => {
                   { color: colors.foreground },
                 ]}
               >
-                Select Date
+                {t('businessDetail.selectDate')}
               </Text>
               <TouchableOpacity
                 onPress={() => setIsCalendarOpen(false)}
@@ -607,7 +781,7 @@ export const BusinessDetailScreen: React.FC = () => {
             {/* Done Button */}
             <View style={styles.modalFooter}>
               <Button
-                title="Done"
+                title={t('common.ok')}
                 onPress={() => setIsCalendarOpen(false)}
                 fullWidth
                 disabled={!selectedDate}
@@ -625,14 +799,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   imageGallery: {
-    height: 200,
+    height: 220,
     justifyContent: 'center',
     alignItems: 'center',
     margin: spacing.xl,
     marginBottom: spacing.md,
   },
-  galleryPlaceholder: {
-    fontSize: 64,
+  dotRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: spacing.sm,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   content: {
     padding: spacing.xl,
@@ -640,6 +823,15 @@ const styles = StyleSheet.create({
   businessName: {
     fontSize: typography.sizes.xxl,
     marginBottom: spacing.sm,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  tagChip: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
   },
   ratingRow: {
     flexDirection: 'row',
@@ -717,6 +909,47 @@ const styles = StyleSheet.create({
   reviewDate: {
     fontSize: typography.sizes.xs,
   },
+  // Location map modal
+  mapModalContainer: {
+    flex: 1,
+  },
+  mapModalLoading: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mapCloseBtn: {
+    position: 'absolute',
+    right: spacing.md,
+    zIndex: 10,
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.pill,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mapInfoBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: spacing.xl,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+  },
+  markerContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  // Calendar modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

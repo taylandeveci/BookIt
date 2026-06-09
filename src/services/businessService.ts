@@ -8,10 +8,11 @@ export const businessService = {
 
   async getBusinesses(filters?: FilterOptions): Promise<Business[]> {
     const params = new URLSearchParams();
-    
+
     if (filters?.search) params.append('search', filters.search);
     if (filters?.minRating) params.append('minRating', filters.minRating.toString());
     if (filters?.maxDistance) params.append('maxDistance', filters.maxDistance.toString());
+    if (filters?.serviceName) params.append('serviceName', filters.serviceName);
 
     const query = params.toString();
     return await apiClient.get<Business[]>(`/businesses${query ? `?${query}` : ''}`);
@@ -32,10 +33,14 @@ export const businessService = {
   async getAvailableTimeSlots(
     businessId: string,
     employeeId: string,
-    date: string
+    date: string,
+    serviceId?: string
   ): Promise<{ time: string; available: boolean }[]> {
+    const query = serviceId
+      ? `employeeId=${employeeId}&date=${date}&serviceId=${serviceId}`
+      : `employeeId=${employeeId}&date=${date}`;
     return await apiClient.get(
-      `/businesses/${businessId}/time-slots?employeeId=${employeeId}&date=${date}`
+      `/businesses/${businessId}/time-slots?${query}`
     );
   },
 };

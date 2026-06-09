@@ -1,6 +1,6 @@
 import { apiClient } from './apiClient';
 import * as SecureStore from 'expo-secure-store';
-import { User, LoginFormData, RegisterFormData } from '../types';
+import { User, LoginFormData } from '../types';
 
 interface AuthResponse {
   user: User;
@@ -40,19 +40,13 @@ export const authService = {
       phone: data.phone,
     });
     
-    const normalized = normalizeAuthResponse(response);
-
-    // Store tokens securely
-    await SecureStore.setItemAsync('accessToken', normalized.accessToken);
-    await SecureStore.setItemAsync('refreshToken', normalized.refreshToken);
-
-    return normalized;
+    return normalizeAuthResponse(response);
   },
 
-  async registerOwner(data: { 
-    fullName: string; 
-    email: string; 
-    password: string; 
+  async registerOwner(data: {
+    fullName: string;
+    email: string;
+    password: string;
     phone?: string;
     businessName: string;
   }): Promise<AuthResponse> {
@@ -63,14 +57,23 @@ export const authService = {
       phone: data.phone,
       businessName: data.businessName,
     });
-    
-    const normalized = normalizeAuthResponse(response);
+    return normalizeAuthResponse(response);
+  },
 
-    // Store tokens securely
-    await SecureStore.setItemAsync('accessToken', normalized.accessToken);
-    await SecureStore.setItemAsync('refreshToken', normalized.refreshToken);
+  async verifyJoinCode(code: string): Promise<{ businessId: string; businessName: string; isValid: boolean }> {
+    const response = await apiClient.post<any>('/auth/verify-join-code', { code });
+    return response;
+  },
 
-    return normalized;
+  async registerEmployee(data: {
+    fullName: string;
+    email: string;
+    password: string;
+    joinCode: string;
+    specialization?: string;
+  }): Promise<AuthResponse> {
+    const response = await apiClient.post<any>('/auth/register-employee', data);
+    return normalizeAuthResponse(response);
   },
 
   async login(credentials: LoginFormData): Promise<AuthResponse> {
@@ -90,20 +93,19 @@ export const authService = {
   async logout(): Promise<void> {
     try {
       await apiClient.post('/auth/logout');
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      // Clear tokens regardless of API response
-      await SecureStore.deleteItemAsync('accessToken');
-      await SecureStore.deleteItemAsync('refreshToken');
+    } catch {
+      // Backend logout may fail if token is already expired; authStore handles local cleanup.
     }
   },
 
   async getMe(): Promise<User> {
     const user = await apiClient.get<any>('/auth/me');
-    // Normalize role to uppercase
     if (user?.role && typeof user.role === 'string') {
       user.role = user.role.toUpperCase();
+    }
+    // Backend returns fullName; frontend User type expects name
+    if (user?.fullName && !user.name) {
+      user.name = user.fullName;
     }
     return user as User;
   },
@@ -134,12 +136,12 @@ export const authService = {
     return { accessToken, refreshToken };
   },
 
-  async updateProfile(userId: string, data: { name?: string; email?: string }): Promise<User> {
-    return await apiClient.put<User>(`/auth/profile/${userId}`, data);
+  async updateProfile(data: { name?: string; email?: string; avatarUrl?: string }): Promise<User> {
+    return await apiClient.put<User>('/auth/profile/me', data);
   },
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
-    await apiClient.post(`/auth/change-password/${userId}`, {
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await apiClient.post('/auth/change-password/me', {
       currentPassword,
       newPassword,
     });

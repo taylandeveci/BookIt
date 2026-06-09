@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,13 @@ import {
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { reviewService } from '../../services/reviewService';
+import { businessService } from '../../services/businessService';
 import { Review } from '../../types';
+import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '../../lib/queryKeys';
 import { useTheme } from '../../theme/useTheme';
 import {
   Card,
@@ -21,14 +25,23 @@ import {
   LoadingSpinner,
   EmptyState,
   Toast,
+  AverageRating,
 } from '../../components';
-import { ProgressBar, getTimeAgo } from '../../components/reviews';
-import { spacing, typography, borderRadius } from '../../theme/theme';
+// Inline implementations (formerly in src/components/reviews/)
+const ProgressBar: React.FC<{ value: number; height?: number }> = ({ value, height = 8 }) => {
+  const { colors } = useTheme();
+  return (
+    <View style={{ height, backgroundColor: colors.muted, borderRadius: height / 2, overflow: 'hidden' }}>
+      <View style={{ height, width: `${Math.min(1, Math.max(0, value)) * 100}%`, backgroundColor: colors.primary, borderRadius: height / 2 }} />
+    </View>
+  );
+};
+import { spacing, typography } from '../../theme/theme';
 
 type RouteParams = RouteProp<RootStackParamList, 'BusinessReviews'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-type FilterType = 'all' | 'recent' | 'highest' | 'lowest' | 'photos';
+type FilterType = 'all' | 'recent' | 'highest' | 'lowest';
 
 interface RatingDistribution {
   5: number;
@@ -39,40 +52,38 @@ interface RatingDistribution {
 }
 
 export const BusinessReviewsScreen: React.FC = () => {
-  const { colors, shadows } = useTheme();
+  const { colors } = useTheme();
+  const { t } = useTranslation();
   const route = useRoute<RouteParams>();
   const navigation = useNavigation<NavigationProp>();
   
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('all');
   const [helpfulReviews, setHelpfulReviews] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const { businessId, businessName, ratingAvg, ratingCount } = route.params;
+  const { businessId } = route.params;
 
-  useEffect(() => {
-    console.log('BusinessReviews params:', route.params);
-    loadReviews();
-  }, [businessId]);
+  const { data: ratingData, isLoading: ratingLoading } = useQuery({
+    queryKey: queryKeys.businesses.averageRating(businessId),
+    queryFn: async () => {
+      const biz = await businessService.getBusiness(businessId);
+      return {
+        averageRating: Number(biz?.averageRating) || 0,
+        reviewCount: biz?.reviewCount || 0,
+      };
+    },
+  });
 
-  const loadReviews = async () => {
-    try {
-      setLoading(true);
+  const liveRating = ratingData?.averageRating ?? 0;
+  const liveReviewCount = ratingData?.reviewCount ?? 0;
+
+  const { data: reviews = [], isLoading: loading } = useQuery({
+    queryKey: queryKeys.reviews.forBusiness(businessId),
+    queryFn: async () => {
       const data = await reviewService.getReviews(businessId);
-      // Ensure data is an array before filtering
-      const reviewsArray = Array.isArray(data) ? data : [];
-      // Show only APPROVED reviews publicly
-      const approvedReviews = reviewsArray.filter((r) => r.status === 'APPROVED');
-      setReviews(approvedReviews);
-    } catch (error: any) {
-      console.error('Failed to load reviews:', error);
-      setToast({ message: error.message || 'Failed to load reviews', type: 'error' });
-      setReviews([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return Array.isArray(data) ? (data as Review[]) : [];
+    },
+  });
 
   // Calculate rating distribution
   const distribution: RatingDistribution = useMemo(() => {
@@ -98,10 +109,6 @@ export const BusinessReviewsScreen: React.FC = () => {
       case 'lowest':
         filtered.sort((a, b) => a.rating - b.rating);
         break;
-      case 'photos':
-        // Mock: assume some reviews have photos (for demo, filter reviews with id containing '2' or '4')
-        filtered = filtered.filter((r) => r.id.includes('2') || r.id.includes('4'));
-        break;
       default:
         // 'all' - no sorting
         break;
@@ -122,36 +129,30 @@ export const BusinessReviewsScreen: React.FC = () => {
     });
   };
 
-  const renderHeader = () => {
-    // Safe conversion for ratingAvg - handle string/null/undefined
-    const safeRating = typeof ratingAvg === 'number' && !isNaN(ratingAvg) && isFinite(ratingAvg)
-      ? ratingAvg
-      : Number(ratingAvg) || 0;
-    const displayRating = !isNaN(safeRating) && isFinite(safeRating) ? safeRating : 0;
-
-    return (
-      <View>
-        {/* Rating Summary Card */}
-        <Card style={styles.summaryCard}>
-          <Text style={[styles.largeRating, typography.heading, { color: colors.foreground }]}>
-            {displayRating.toFixed(1)}
-          </Text>
-          <RatingStars rating={displayRating} size={24} />
-          <Text style={[styles.basedOnText, typography.body, { color: colors.mutedForeground }]}>
-            Based on {ratingCount} review{ratingCount !== 1 ? 's' : ''}
-          </Text>
-        </Card>
+  const renderHeader = () => (
+    <View>
+      {/* Rating Summary Card */}
+      <Card style={styles.summaryCard}>
+        {ratingLoading ? (
+          <LoadingSpinner size="small" />
+        ) : (
+          <AverageRating averageRating={liveRating} reviewCount={liveReviewCount} size="full" />
+        )}
+      </Card>
 
       {/* Rating Distribution Card */}
       <Card style={styles.distributionCard}>
         {([5, 4, 3, 2, 1] as const).map((star) => {
           const count = distribution[star];
-          const percentage = ratingCount > 0 ? count / ratingCount : 0;
+          const percentage = liveReviewCount > 0 ? count / liveReviewCount : 0;
           return (
             <View key={star} style={styles.distributionRow}>
-              <Text style={[styles.starLabel, typography.bodySemiBold, { color: colors.foreground }]}>
-                {star}★
-              </Text>
+              <View style={styles.starLabelRow}>
+                <Text style={[typography.bodySemiBold, { color: colors.foreground, fontSize: typography.sizes.sm }]}>
+                  {star}
+                </Text>
+                <Ionicons name="star" size={11} color={colors.secondary} style={{ marginLeft: 2 }} />
+              </View>
               <View style={styles.barContainer}>
                 <ProgressBar value={percentage} height={8} />
               </View>
@@ -165,7 +166,7 @@ export const BusinessReviewsScreen: React.FC = () => {
 
       {/* Filter Chips */}
       <View style={styles.filterRow}>
-        {(['all', 'recent', 'highest', 'lowest', 'photos'] as const).map((filter) => (
+        {(['all', 'recent', 'highest', 'lowest'] as const).map((filter) => (
           <Chip
             key={filter}
             label={filter.charAt(0).toUpperCase() + filter.slice(1)}
@@ -176,15 +177,15 @@ export const BusinessReviewsScreen: React.FC = () => {
         ))}
       </View>
     </View>
-    );
-  };
+  );
 
   const renderReview = ({ item }: { item: Review }) => {
     const isHelpful = helpfulReviews.has(item.id);
-    const timeAgo = getTimeAgo(item.createdAt);
-    // Mock: assume some reviews have photos
-    const hasPhotos = item.id.includes('2') || item.id.includes('4');
-    const mockPhotos = hasPhotos ? ['photo1', 'photo2', 'photo3'] : [];
+    const dateFormatted = new Date(item.createdAt).toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
 
     return (
       <Card style={styles.reviewCard}>
@@ -196,46 +197,20 @@ export const BusinessReviewsScreen: React.FC = () => {
             </View>
             <View style={styles.userInfo}>
               <Text style={[styles.userName, typography.bodySemiBold, { color: colors.foreground }]}>
-                User {item.userId.slice(0, 6)}
+                {item.user?.fullName || t('common.anonymous')}
               </Text>
               <RatingStars rating={item.rating} size={14} />
             </View>
           </View>
           <Text style={[styles.timeAgo, typography.body, { color: colors.mutedForeground }]}>
-            {timeAgo}
+            {dateFormatted}
           </Text>
         </View>
 
         {/* Review Text */}
         <Text style={[styles.reviewText, typography.body, { color: colors.foreground }]}>
-          {item.comment}
+          {item.commentText || item.comment}
         </Text>
-
-        {/* Optional Service Tag (mock) */}
-        <View style={styles.tagRow}>
-          <View style={[styles.serviceTag, { backgroundColor: colors.accent }]}>
-            <Text style={[typography.body, { color: colors.accentForeground, fontSize: typography.sizes.xs }]}>
-              Service
-            </Text>
-          </View>
-        </View>
-
-        {/* Optional Photos Row */}
-        {mockPhotos.length > 0 && (
-          <View style={styles.photosRow}>
-            {mockPhotos.slice(0, 3).map((photo, idx) => (
-              <View
-                key={idx}
-                style={[
-                  styles.photoThumb,
-                  { backgroundColor: colors.muted, borderRadius: borderRadius.md },
-                ]}
-              >
-                <Ionicons name="image-outline" size={24} color={colors.mutedForeground} />
-              </View>
-            ))}
-          </View>
-        )}
 
         {/* Helpful Button */}
         <View style={styles.helpfulRow}>
@@ -310,12 +285,14 @@ export const BusinessReviewsScreen: React.FC = () => {
         data={filteredReviews}
         renderItem={renderReview}
         keyExtractor={(item) => item.id}
+        removeClippedSubviews
+        maxToRenderPerBatch={10}
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={
           <EmptyState
-            icon="star-outline"
-            title="No reviews yet"
-            description="Be the first to review this business"
+            icon="chatbubble-outline"
+            title={t('businessReviews.noReviews')}
+            description={t('reviews.beFirst')}
           />
         }
         contentContainerStyle={styles.listContent}
@@ -386,6 +363,11 @@ const styles = StyleSheet.create({
     width: 32,
     fontSize: typography.sizes.sm,
   },
+  starLabelRow: {
+    width: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   barContainer: {
     flex: 1,
     marginHorizontal: spacing.md,
@@ -441,26 +423,6 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.md,
     lineHeight: 22,
     marginBottom: spacing.md,
-  },
-  tagRow: {
-    flexDirection: 'row',
-    marginBottom: spacing.md,
-  },
-  serviceTag: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.pill,
-  },
-  photosRow: {
-    flexDirection: 'row',
-    marginBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  photoThumb: {
-    width: 64,
-    height: 64,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   helpfulRow: {
     flexDirection: 'row',

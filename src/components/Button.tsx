@@ -17,6 +17,7 @@ interface ButtonProps extends TouchableOpacityProps {
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   fullWidth?: boolean;
+  textStyle?: TextStyle;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -27,6 +28,7 @@ export const Button: React.FC<ButtonProps> = ({
   fullWidth = false,
   disabled,
   style,
+  textStyle,
   ...props
 }) => {
   const { colors, shadows } = useTheme();
@@ -97,7 +99,7 @@ export const Button: React.FC<ButtonProps> = ({
       {loading ? (
         <ActivityIndicator color={textStyles[1].color as string} />
       ) : (
-        <Text style={textStyles}>{title}</Text>
+        <Text style={[...textStyles, textStyle]}>{title}</Text>
       )}
     </TouchableOpacity>
   );

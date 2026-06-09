@@ -1,335 +1,111 @@
-# BookIT - Appointment Booking App
+# BookIT
 
-A complete iOS/Android mobile application built with React Native (Expo) for booking appointments with barbers, hairdressers, beauty salons, and restaurants.
-
-## ✨ Features
-
-### For Customers
-
-- 🏠 Browse and discover businesses
-- 🔍 Search with filters (category, rating, distance)
-- 📅 Book appointments with step-by-step flow
-- 📱 Manage appointments (active & past)
-- ⭐ Write reviews after completed appointments
-- 👤 Profile management with dark mode
-- 🔔 Notification preferences
-
-### For Business Owners
-
-- 📊 Dashboard with today's statistics
-- ✅ Approve/reject appointment requests
-- 👥 Manage employees (CRUD operations)
-- ✂️ Manage services (CRUD operations)
-- 🏢 Business profile & license verification
-- 📝 Review moderation (approval required)
-- 🎨 Theme customization
-
-### Professional Features
-
-- 🌙 Light & Dark mode with persistence
-- 🎨 Organic/natural design system
-- ⚡ Loading states & error handling
-- 🔒 Role-based access control
-- 📲 Guest user protection
-- 🎯 Empty states & confirmations
-- 🔄 Real-time state management
-- 📝 Form validation with Zod
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Node.js (v16 or higher)
-- npm or yarn
-- Expo CLI (`npm install -g expo-cli`)
-- iOS Simulator (Mac) or Android Studio
-
-### Installation
-
-1. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-2. **Start the development server**
-
-   ```bash
-   npm start
-   ```
-
-3. **Run on iOS**
-
-   ```bash
-   npm run ios
-   ```
-
-4. **Run on Android**
-   ```bash
-   npm run android
-   ```
-
-## 🔑 Demo Accounts
-
-### Customer Account
-
-- **Email:** `user@test.com`
-- **Password:** `123456`
-
-### Business Owner Account
-
-- **Email:** `owner@test.com`
-- **Password:** `123456`
-
-## 🏗️ Architecture
-
-### Tech Stack
-
-- **Framework:** React Native + Expo SDK 52
-- **Language:** TypeScript
-- **Navigation:** React Navigation (Stack + Tabs)
-- **State Management:** Zustand
-- **Forms:** React Hook Form + Zod
-- **Storage:** AsyncStorage
-- **Fonts:** Fraunces (headings) + Nunito (body)
-
-### Project Structure
-
-```
-src/
-├── components/          # Reusable UI components
-│   ├── Button.tsx
-│   ├── Input.tsx
-│   ├── Card.tsx
-│   ├── Chip.tsx
-│   ├── RatingStars.tsx
-│   ├── EmptyState.tsx
-│   ├── Toast.tsx
-│   └── LoadingSpinner.tsx
-├── navigation/          # Navigation configuration
-│   └── RootNavigator.tsx
-├── screens/            # Screen components
-│   ├── auth/
-│   │   └── AuthScreen.tsx
-│   ├── user/
-│   │   ├── HomeScreen.tsx
-│   │   ├── SearchScreen.tsx
-│   │   ├── BusinessDetailScreen.tsx
-│   │   ├── AppointmentsScreen.tsx
-│   │   ├── ProfileScreen.tsx
-│   │   └── ReviewScreen.tsx
-│   └── owner/
-│       ├── DashboardScreen.tsx
-│       ├── RequestsScreen.tsx
-│       ├── EmployeesScreen.tsx
-│       ├── ServicesScreen.tsx
-│       └── OwnerProfileScreen.tsx
-├── services/           # API & business logic
-│   └── mockApi.ts
-├── store/              # Zustand stores
-│   ├── authStore.ts
-│   ├── appStore.ts
-│   └── dataStore.ts
-├── theme/              # Design system
-│   ├── theme.ts
-│   └── useTheme.ts
-└── types/              # TypeScript definitions
-    └── index.ts
-```
-
-## 🎨 Design System
-
-### Colors
-
-The app uses an organic/natural color palette:
-
-**Light Mode:**
-
-- Primary: `#5D7052` (Moss green)
-- Secondary: `#C18C5D` (Clay)
-- Background: `#FDFCF8` (Warm white)
-- Accent: `#E6DCCD` (Sand)
-
-**Dark Mode:**
-
-- Automatically adjusted for optimal contrast
-
-### Typography
-
-- **Headings:** Fraunces (elegant serif)
-- **Body:** Nunito (clean sans-serif)
-
-### Shadows
-
-- Moss-tinted shadows in light mode
-- Proper elevation on Android
-- Soft, organic feel throughout
-
-## 📱 User Flows
-
-### Booking Flow
-
-1. Browse businesses on Home screen
-2. Select a business
-3. Choose staff member
-4. Select service
-5. Pick date from calendar
-6. Choose available time slot
-7. Confirm booking
-8. Appointment enters PENDING state
-9. Owner approves/rejects
-10. Customer receives update
-
-### Review Flow
-
-1. Complete an appointment
-2. Navigate to Appointments > Past
-3. Click "Write Review"
-4. Rate 1-5 stars
-5. Write comment
-6. Submit (enters PENDING state)
-7. Owner approves review
-8. Review becomes public
-
-## 🔐 Authentication & Authorization
-
-- Email/password authentication
-- Persistent sessions with AsyncStorage
-- Role-based routing (User vs Owner)
-- Protected actions for guests
-- Business license verification for owners
-
-## 🌐 Mock API
-
-All data is mocked with `setTimeout` delays to simulate network requests:
-
-- Businesses with ratings & reviews
-- Employees & services
-- Appointments with status tracking
-- User management
-- Review system with approval
-
-**Easy to replace:** The mock API follows standard async/await patterns and can be swapped with a real backend by updating the `mockApi.ts` file.
-
-## 🎯 State Management
-
-### Zustand Stores
-
-**authStore:**
-
-- User authentication
-- Session persistence
-- Login/logout
-
-**appStore:**
-
-- Theme (light/dark)
-- Notifications toggle
-- Persistent preferences
-
-**dataStore:**
-
-- Businesses, employees, services
-- Appointments & reviews
-- CRUD operations
-
-## 🔄 Navigation
-
-- **RootNavigator:** Handles auth state
-- **AuthStack:** Login/register screens
-- **UserTabs:** Home, Search, Appointments, Profile
-- **OwnerTabs:** Dashboard, Requests, Employees, Services, Profile
-- **Modal Screens:** Business detail, Review submission
-
-## ⚡ Performance
-
-- Lazy loading with FlatList
-- Memoized components where needed
-- Optimized re-renders with Zustand
-- Efficient navigation structure
-
-## 🐛 Error Handling
-
-- Form validation with Zod
-- API error messages
-- Alert dialogs for critical actions
-- Toast notifications for feedback
-- Empty states for no data
-- Loading spinners during async operations
-
-## 🌙 Theme System
-
-The app supports light and dark modes:
-
-- Toggle in profile settings
-- Persists across sessions
-- All components adapt automatically
-- Proper contrast ratios
-- Organic color transitions
-
-## 📝 Forms
-
-All forms use React Hook Form + Zod:
-
-- Email validation
-- Password strength
-- Required fields
-- Custom error messages
-- Real-time validation
-- Accessible error display
-
-## 🎭 Professional Touch
-
-- Confirmations for destructive actions
-- Loading states everywhere
-- Empty states with helpful messages
-- Consistent microcopy
-- Proper back navigation
-- Permission handling (calendar, documents)
-- Edge case coverage
-
-## 🚧 Future Enhancements
-
-To make this production-ready:
-
-- [ ] Connect to real backend API
-- [ ] Add image upload for businesses
-- [ ] Implement push notifications
-- [ ] Add payment integration
-- [ ] Real-time chat support
-- [ ] Advanced search filters
-- [ ] Calendar integration (complete)
-- [ ] Analytics dashboard
-- [ ] Multi-language support
-- [ ] Accessibility improvements
-
-## 📄 License
-
-This is a demo project for educational purposes.
-
-## 👨‍💻 Development
-
-Built with best practices:
-
-- TypeScript for type safety
-- Modular component architecture
-- Clean separation of concerns
-- Reusable UI components
-- Scalable folder structure
-- Professional code quality
-
-## 🤝 Contributing
-
-This is a demo project, but feel free to fork and customize!
-
-## 📧 Support
-
-For questions or issues, please refer to the Expo documentation:
-
-- [Expo Docs](https://docs.expo.dev/)
-- [React Navigation](https://reactnavigation.org/)
-- [Zustand](https://zustand-demo.pmnd.rs/)
+Appointment booking platform for service businesses.
 
 ---
 
-**BookIT** - Book appointments with ease 🎯
+## Running the app (Simulator)
+
+The standard development workflow uses the iOS simulator:
+
+```
+npm run demo:full
+```
+
+This starts both the backend (port 3000) and the Expo bundler
+pointed at the simulator. Nothing else is required.
+
+---
+
+## Testing on Physical Device (QR Code)
+
+### Fiziksel Cihazda Test (QR Kod) / Testing on Physical Device
+
+**Turkce:**
+
+1. Telefona App Store veya Google Play'den **Expo Go** uygulamasini yukleyin.
+
+2. Ag secenekleri:
+   - **Tunnel modu** (farkli aglar icin): `npm run dev:qr`
+     Telefon ve bilgisayarin ayni Wi-Fi aginda olmasi gerekmez.
+     Expo'nun tunnel altyapisi baglantiya aracililik eder.
+   - **LAN modu** (ayni Wi-Fi): `npm run dev:qr:lan`
+     Telefon ve bilgisayar ayni Wi-Fi aginda olmalidir.
+
+3. LAN modunu kullananlar icin:
+   Calistirmadan once `.env.qr` dosyasini acin ve
+   `EXPO_PUBLIC_API_URL` degerindeki IP adresini kendi
+   makinenizin yerel IP adresiyle degistirin.
+   - Mac/Linux: `ifconfig | grep "inet "` komutuyla bulunur
+   - Windows: `ipconfig` komutuyla bulunur
+   Ardından uygulamayi `.env.qr` ile baslatmak icin scripti
+   `--env-file .env.qr` parametresiyle calistirin ya da
+   `.env` dosyasindaki URL'yi gecici olarak guncelleyin.
+
+4. Terminal'de gorunen QR kodu:
+   - iOS: Kamera uygulamasiyla tarayin
+   - Android: Expo Go uygulamasi icinde tarayin
+
+5. Mevcut `npm run demo:full` komutu degismeden calismaya devam eder.
+
+---
+
+**English:**
+
+1. Install **Expo Go** on your phone from the App Store (iOS) or
+   Google Play (Android).
+
+2. Choose a connection mode:
+   - **Tunnel mode** (works across different networks): `npm run dev:qr`
+     The phone and computer do not need to be on the same Wi-Fi.
+     Expo's tunnel service handles the connection.
+   - **LAN mode** (same Wi-Fi only): `npm run dev:qr:lan`
+     The phone and computer must be on the same Wi-Fi network.
+
+3. For LAN mode only:
+   Before running, open `.env.qr` and replace the IP address in
+   `EXPO_PUBLIC_API_URL` with your machine's local IP address.
+   - Mac/Linux: find it with `ifconfig | grep "inet "`
+   - Windows: find it with `ipconfig`
+   Then start the app using `.env.qr` by passing `--env-file .env.qr`
+   to the script, or temporarily update the URL in `.env`.
+
+4. Scan the QR code shown in the terminal:
+   - iOS: use the Camera app
+   - Android: use the Expo Go app
+
+5. The existing `npm run demo:full` command is unchanged and still works.
+
+---
+
+### Expo Go version compatibility
+
+If the Expo SDK version in `app.json` does not match the Expo Go
+app version installed on the device, a compatibility warning will
+appear. In that case:
+
+- Use tunnel mode (`npm run dev:qr`) which handles version differences
+  more gracefully, or
+- Update Expo Go to the latest version from the app store.
+
+The current SDK version is `52` (see `app.json`).
+
+---
+
+## Available scripts
+
+| Script | Description |
+|---|---|
+| `npm run demo:full` | Start backend + Expo for iOS simulator (existing workflow) |
+| `npm run demo:sim` | Open simulator first, then start demo:full |
+| `npm run dev:qr` | Start backend + Expo with tunnel for physical device |
+| `npm run dev:qr:lan` | Start Expo on local network (LAN mode, no backend) |
+| `npm run dev:expo:qr` | Start only Expo with tunnel (no backend) |
+| `npm run dev:backend` | Start only the backend server |
+| `npm run dev:all` | Start backend + Expo for simulator |
+
+---
+
+## Backend
+
+The backend runs on port 3000. Source: `/Users/taylandeveci/BookIT-backend`

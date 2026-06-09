@@ -17,34 +17,28 @@ export const BackendHealthCheck: React.FC = () => {
 
   const checkHealth = async () => {
     try {
-      const response = await fetch(`${API_URL}/health`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 3000)
+      );
+      const response = await Promise.race([
+        fetch(`${API_URL}/health`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        }),
+        timeout,
+      ]);
       if (response.ok) {
-        const data = await response.json();
-        console.log('[BACKEND HEALTH]', 'Connected:', data);
         setStatus('connected');
-        // Auto-hide after 2 seconds if connected
         setTimeout(() => setHideAfterSuccess(true), 2000);
       } else {
-        console.warn('[BACKEND HEALTH]', 'HTTP Error:', response.status);
         setStatus('error');
       }
-    } catch (error) {
-      console.error('[BACKEND HEALTH]', 'Failed:', error);
+    } catch {
       setStatus('error');
     }
   };
 
-  // Hide if connected and timeout passed
-  if (status === 'connected' && hideAfterSuccess) {
-    return null;
-  }
-
-  // Only show during development
-  if (__DEV__ === false) {
+  if (!__DEV__ || (status === 'connected' && hideAfterSuccess) || status === 'error') {
     return null;
   }
 
@@ -53,9 +47,7 @@ export const BackendHealthCheck: React.FC = () => {
       case 'checking':
         return colors.mutedForeground;
       case 'connected':
-        return '#10b981'; // green
-      case 'error':
-        return colors.destructive;
+        return '#10b981';
     }
   };
 
@@ -65,19 +57,15 @@ export const BackendHealthCheck: React.FC = () => {
         return 'Checking backend...';
       case 'connected':
         return 'Backend connected';
-      case 'error':
-        return `Backend not reachable at ${API_URL}`;
     }
   };
 
   const getIcon = () => {
     switch (status) {
       case 'checking':
-        return 'hourglass-outline';
+        return 'hourglass-outline' as const;
       case 'connected':
-        return 'checkmark-circle';
-      case 'error':
-        return 'warning';
+        return 'checkmark-circle' as const;
     }
   };
 

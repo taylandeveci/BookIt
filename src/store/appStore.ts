@@ -14,11 +14,12 @@ export const useAppStore = create<AppState>((set) => ({
   notificationsEnabled: true,
 
   toggleTheme: async () => {
+    let newMode = false;
     set((state) => {
-      const newMode = !state.isDarkMode;
-      AsyncStorage.setItem('isDarkMode', JSON.stringify(newMode));
+      newMode = !state.isDarkMode;
       return { isDarkMode: newMode };
     });
+    await AsyncStorage.setItem('isDarkMode', JSON.stringify(newMode));
   },
 
   setNotifications: async (enabled) => {

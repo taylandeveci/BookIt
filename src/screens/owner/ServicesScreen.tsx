@@ -1,17 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   Alert,
   Modal,
-  TextInput as RNTextInput,
   FlatList,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '../../lib/queryKeys';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -24,12 +22,13 @@ import {
   Card,
   Button,
   Input,
-  Chip,
   LoadingSpinner,
   EmptyState,
   Toast,
 } from '../../components';
+import { useTranslation } from 'react-i18next';
 import { spacing, typography } from '../../theme/theme';
+import { formatCurrency } from '../../lib/formatCurrency';
 
 const serviceSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -42,11 +41,10 @@ type ServiceFormData = z.infer<typeof serviceSchema>;
 
 export const ServicesScreen: React.FC = () => {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
   
-  const [services, setServices] = useState<Service[]>([]);
-  const [business, setBusiness] = useState<Business | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -61,33 +59,24 @@ export const ServicesScreen: React.FC = () => {
     resolver: zodResolver(serviceSchema),
   });
 
+  const { data: ownerData, isLoading: loading } = useQuery({
+    queryKey: queryKeys.owner.services,
+    queryFn: async () => {
+      const biz = await ownerService.getBusiness();
+      const svcs = await businessService.getServices(biz.id);
+      return { business: biz as Business, services: Array.isArray(svcs) ? svcs : [] as Service[] };
+    },
+    enabled: !!user,
+  });
+
+  const business = ownerData?.business ?? null;
+  const services = ownerData?.services ?? [];
+
   useFocusEffect(
     React.useCallback(() => {
-      loadServices();
-    }, [user])
+      queryClient.invalidateQueries({ queryKey: queryKeys.owner.services });
+    }, [queryClient])
   );
-
-  const loadServices = async () => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-      
-      const allBusinesses = await businessService.getBusinesses({});
-      const ownerBusiness = allBusinesses.find((b) => b.ownerId === user.id);
-      
-      if (ownerBusiness) {
-        setBusiness(ownerBusiness);
-        const data = await businessService.getServices(ownerBusiness.id);
-        setServices(data);
-      }
-    } catch (error: any) {
-      console.error('Failed to load services:', error);
-      setToast({ message: error.message || 'Failed to load services', type: 'error' });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const openModal = (service?: Service) => {
     if (service) {
@@ -113,25 +102,20 @@ export const ServicesScreen: React.FC = () => {
 
   const onSubmit = async (data: ServiceFormData) => {
     if (!business) {
-      setToast({ message: 'Business not found. Please try again.', type: 'error' });
+      setToast({ message: t('services.businessNotFound'), type: 'error' });
       return;
     }
 
-    console.log('[ServicesScreen] Form data received:', data);
-
-    // Validate numbers before sending
     const price = parseFloat(data.price);
     const durationMin = parseInt(data.duration, 10);
 
-    console.log('[ServicesScreen] Parsed values:', { price, durationMin });
-
     if (isNaN(price) || price <= 0) {
-      setToast({ message: 'Invalid price. Must be a positive number.', type: 'error' });
+      setToast({ message: t('services.priceError'), type: 'error' });
       return;
     }
 
     if (isNaN(durationMin) || durationMin <= 0) {
-      setToast({ message: 'Invalid duration. Must be a positive number.', type: 'error' });
+      setToast({ message: t('services.durationError'), type: 'error' });
       return;
     }
 
@@ -145,21 +129,24 @@ export const ServicesScreen: React.FC = () => {
         isActive: true, // New services are active by default
       };
 
-      console.log('[ServicesScreen] Sending service data:', serviceData);
-
       if (editingService) {
         await ownerService.updateService(editingService.id, serviceData);
-        setToast({ message: 'Service updated', type: 'success' });
+        setToast({ message: t('services.updateSuccess'), type: 'success' });
       } else {
         await ownerService.createService(business.id, serviceData);
-        setToast({ message: 'Service added', type: 'success' });
+        setToast({ message: t('services.addSuccess'), type: 'success' });
       }
       closeModal();
-      loadServices();
+      queryClient.invalidateQueries({ queryKey: queryKeys.owner.services });
+      if (business) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.businesses.services(business.id) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.businesses.detail(business.id) });
+        if (editingService) {
+          queryClient.invalidateQueries({ queryKey: ['employees'] });
+        }
+      }
     } catch (error: any) {
-      console.error('[ServicesScreen] Operation failed:', error);
-      // Show the actual backend error message
-      const errorMessage = error.response?.data?.message || error.message || 'Operation failed. Please try again.';
+      const errorMessage = error.response?.data?.message || error.message || t('services.updateError');
       setToast({ message: errorMessage, type: 'error' });
     } finally {
       setActionLoading(false);
@@ -168,20 +155,26 @@ export const ServicesScreen: React.FC = () => {
 
   const handleDelete = (service: Service) => {
     Alert.alert(
-      'Delete Service',
-      `Are you sure you want to delete "${service.name}"?`,
+      t('services.deleteConfirm'),
+      `${t('services.deleteConfirm')} "${service.name}"?`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               await ownerService.deleteService(service.id);
-              setToast({ message: 'Service deleted', type: 'success' });
-              loadServices();
+              setToast({ message: t('services.deleteSuccess'), type: 'success' });
+              queryClient.invalidateQueries({ queryKey: queryKeys.owner.services });
+              if (business) {
+                queryClient.invalidateQueries({ queryKey: queryKeys.businesses.services(business.id) });
+                queryClient.invalidateQueries({ queryKey: queryKeys.businesses.detail(business.id) });
+                queryClient.invalidateQueries({ queryKey: ['businesses', business.id, 'timeSlots'] });
+                queryClient.invalidateQueries({ queryKey: ['employees'] });
+              }
             } catch (error: any) {
-              setToast({ message: error.message || 'Failed to delete service', type: 'error' });
+              setToast({ message: error.message || t('services.deleteError'), type: 'error' });
             }
           },
         },
@@ -219,7 +212,7 @@ export const ServicesScreen: React.FC = () => {
             { color: colors.secondary },
           ]}
         >
-          ${item.price}
+          {formatCurrency(Number(item.price))}
         </Text>
         <Text
           style={[
@@ -228,20 +221,20 @@ export const ServicesScreen: React.FC = () => {
             { color: colors.mutedForeground },
           ]}
         >
-          {item.durationMin} min
+          {item.durationMin} {t('common.min')}
         </Text>
       </View>
 
       <View style={styles.serviceActions}>
         <Button
-          title="Edit"
+          title={t('common.edit')}
           variant="outline"
           size="sm"
           onPress={() => openModal(item)}
           style={styles.actionButton}
         />
         <Button
-          title="Delete"
+          title={t('common.delete')}
           variant="destructive"
           size="sm"
           onPress={() => handleDelete(item)}
@@ -264,8 +257,8 @@ export const ServicesScreen: React.FC = () => {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <EmptyState
           icon="business"
-          title="No Business Found"
-          description="You need a registered business to manage services"
+          title={t('services.noBusiness')}
+          description={t('services.noBusinessDesc')}
         />
       </View>
     );
@@ -283,7 +276,7 @@ export const ServicesScreen: React.FC = () => {
       
       <View style={styles.header}>
         <Button
-          title="+ Add Service"
+          title={t('services.addServiceBtn')}
           onPress={() => openModal()}
           variant="primary"
         />
@@ -292,14 +285,16 @@ export const ServicesScreen: React.FC = () => {
       {services.length === 0 ? (
         <EmptyState
           icon="cut"
-          title="No services yet"
-          description="Add your first service to get started"
+          title={t('services.noServicesYet')}
+          description={t('services.addFirst')}
         />
       ) : (
         <FlatList
           data={services}
           renderItem={renderService}
           keyExtractor={(item) => item.id}
+          removeClippedSubviews
+          maxToRenderPerBatch={10}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
         />
@@ -320,7 +315,7 @@ export const ServicesScreen: React.FC = () => {
                 { color: colors.foreground },
               ]}
             >
-              {editingService ? 'Edit Service' : 'Add Service'}
+              {editingService ? t('services.editService') : t('services.addService')}
             </Text>
 
             <Controller
@@ -328,8 +323,8 @@ export const ServicesScreen: React.FC = () => {
               name="name"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
-                  label="Service Name"
-                  placeholder="Classic Haircut"
+                  label={t('services.serviceName')}
+                  placeholder={t('services.serviceNamePlaceholder')}
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
@@ -343,8 +338,8 @@ export const ServicesScreen: React.FC = () => {
               name="description"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
-                  label="Description"
-                  placeholder="Professional haircut with styling"
+                  label={t('services.description')}
+                  placeholder={t('services.descriptionPlaceholder')}
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
@@ -358,8 +353,8 @@ export const ServicesScreen: React.FC = () => {
               name="price"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
-                  label="Price ($)"
-                  placeholder="35.00"
+                  label={t('services.priceLabel')}
+                  placeholder={t('services.pricePlaceholder')}
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
@@ -374,7 +369,7 @@ export const ServicesScreen: React.FC = () => {
               name="duration"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
-                  label="Duration (minutes)"
+                  label={t('services.duration')}
                   placeholder="30"
                   value={value}
                   onChangeText={onChange}
@@ -387,14 +382,14 @@ export const ServicesScreen: React.FC = () => {
 
             <View style={styles.modalActions}>
               <Button
-                title="Cancel"
+                title={t('common.cancel')}
                 variant="outline"
                 size="sm"
                 onPress={closeModal}
                 style={styles.modalButton}
               />
               <Button
-                title={editingService ? 'Update' : 'Add'}
+                title={editingService ? t('common.save') : t('common.add')}
                 variant="primary"
                 size="sm"
                 onPress={handleSubmit(onSubmit)}
@@ -466,15 +461,6 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: typography.sizes.lg,
-    marginBottom: spacing.lg,
-  },
-  categoryLabel: {
-    fontSize: typography.sizes.sm,
-    marginBottom: spacing.sm,
-  },
-  categoryChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     marginBottom: spacing.lg,
   },
   modalActions: {

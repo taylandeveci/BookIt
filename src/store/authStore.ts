@@ -3,7 +3,6 @@ import * as SecureStore from 'expo-secure-store';
 import { User, UserRole } from '../types';
 import { authService } from '../services/authService';
 import { setLogoutCallback, getIsLoggingOut, setIsLoggingOut } from '../services/apiClient';
-import { AxiosError } from 'axios';
 
 interface AuthState {
   user: User | null;
@@ -35,23 +34,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (credentials, expectedRole) => {
     try {
       const response = await authService.login(credentials);
-      console.log('AUTH_SET_USER_ROLE', response.user.role);
-      
+
       // Validate role if expectedRole is provided
       if (expectedRole && response.user.role !== expectedRole) {
-        // Role mismatch - throw error with role info for UI to handle
         const error = new Error('Role mismatch') as any;
         error.expectedRole = expectedRole;
         error.actualRole = response.user.role;
         throw error;
       }
+
+      // Block rejected employees from logging in
+      if (response.user.role === 'EMPLOYEE' && response.user.employee?.status === 'REJECTED') {
+        const error = new Error('Employee account rejected') as any;
+        error.code = 'EMPLOYEE_REJECTED';
+        throw error;
+      }
       
       // Role matches or no validation needed - store tokens and set user
-      await SecureStore.setItemAsync('accessToken', response.accessToken);
-      await SecureStore.setItemAsync('refreshToken', response.refreshToken);
+      await Promise.all([
+        SecureStore.setItemAsync('accessToken', response.accessToken),
+        SecureStore.setItemAsync('refreshToken', response.refreshToken),
+      ]);
       set({ user: response.user, token: response.accessToken });
     } catch (error) {
-      console.error('Failed to login:', error);
       throw error;
     }
   },
@@ -59,11 +64,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     // Prevent multiple simultaneous logout calls
     if (get().isLoggingOut || getIsLoggingOut()) {
-      console.log('[AUTH] logout already in progress, skipping duplicate call');
       return;
     }
-    
-    console.log('[AUTH] logout start');
+
     set({ isLoggingOut: true });
     setIsLoggingOut(true);
     
@@ -83,40 +86,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await clearAuthTokens();
       set({ user: null, token: null, isLoggingOut: false });
       setIsLoggingOut(false);
-      console.log('[AUTH] logout end');
     }
   },
 
   hydrate: async () => {
     try {
       const tokens = await authService.getStoredTokens();
-      
+
       if (tokens.accessToken) {
-        // Fetch current user with stored token
-        const user = await authService.getMe();
-        console.log('AUTH_SET_USER_ROLE', user.role);
+        const hydrateTimeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('hydrate timeout')), 5000)
+        );
+        const user = await Promise.race([authService.getMe(), hydrateTimeout]);
         set({ user, token: tokens.accessToken, hydrated: true });
       } else {
         set({ hydrated: true });
       }
-    } catch (error) {
-      // Check if it's an authentication error (401/403)
-      const isAuthError = 
-        error && 
-        typeof error === 'object' && 
-        'response' in error && 
-        error.response && 
-        typeof error.response === 'object' &&
-        'status' in error.response &&
-        (error.response.status === 401 || error.response.status === 403);
-
-      if (isAuthError) {
-        console.log('Auth tokens cleared (expired or invalid)');
-      } else {
-        console.log('Auth hydration failed, cleared tokens');
-      }
-
-      // Clear invalid tokens and reset state
+    } catch {
       await clearAuthTokens();
       set({ user: null, token: null, hydrated: true });
     }

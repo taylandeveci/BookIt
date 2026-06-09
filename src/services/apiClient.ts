@@ -25,20 +25,17 @@ export const setIsLoggingOut = (value: boolean) => {
 // Ensure logout is called only once
 const ensureLogoutOnce = async (): Promise<void> => {
   if (isLoggingOut) {
-    console.log('[AUTH] logout already in progress, skipping');
     return logoutPromise || Promise.resolve();
   }
-  
+
   if (!logoutCallback) {
-    console.warn('[AUTH] No logout callback registered');
     return Promise.resolve();
   }
-  
-  console.log('[AUTH] triggering logout from API interceptor');
+
   logoutPromise = logoutCallback().finally(() => {
     logoutPromise = null;
   });
-  
+
   return logoutPromise;
 };
 
@@ -56,7 +53,7 @@ class ApiClient {
       headers: {
         'Content-Type': 'application/json',
       },
-      timeout: 30000,
+      timeout: 10000,
     });
 
     this.setupInterceptors();
@@ -66,10 +63,8 @@ class ApiClient {
     // Request interceptor: attach access token + block during logout
     this.client.interceptors.request.use(
       async (config: InternalAxiosRequestConfig) => {
-        // Block all requests during logout (except logout itself)
         const isLogoutRequest = config.url?.includes('/auth/logout');
         if (isLoggingOut && !isLogoutRequest) {
-          console.log('[AUTH] Request blocked during logout:', config.url);
           return Promise.reject(new axios.Cancel('Request cancelled: logout in progress'));
         }
         
@@ -102,15 +97,18 @@ class ApiClient {
 
         // Handle 429 Too Many Requests - don't trigger logout loop
         if (status === 429) {
-          console.warn('[AUTH] Rate limited (429), not triggering logout');
+          return Promise.reject(this.handleError(error));
+        }
+
+        // Never attempt refresh on auth endpoints — they don't carry tokens
+        const isAuthEndpoint = originalRequest.url?.match(/\/auth\/(login|register|verify-join-code|logout|refresh)/);
+        if (isAuthEndpoint) {
           return Promise.reject(this.handleError(error));
         }
 
         // Handle 401/403: try refresh token once, then logout
         if ((status === 401 || status === 403) && !originalRequest._retry) {
-          // If already logging out, don't trigger another logout
           if (isLoggingOut) {
-            console.log('[AUTH] 401/403 received but logout already in progress');
             return Promise.reject(this.handleError(error));
           }
           
@@ -173,7 +171,7 @@ class ApiClient {
 
       switch (status) {
         case 401:
-          return new Error('Authentication required. Please log in again.');
+          return new Error(message || 'Authentication required. Please log in again.');
         case 403:
           return new Error('You do not have permission to perform this action.');
         case 409:

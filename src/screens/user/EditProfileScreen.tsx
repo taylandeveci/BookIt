@@ -4,19 +4,26 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Image,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+import * as ImagePicker from 'expo-image-picker';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { authService } from '../../services/authService';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/useTheme';
 import { Button, Input, Card } from '../../components';
-import { spacing, typography } from '../../theme/theme';
+import { spacing, typography, borderRadius } from '../../theme/theme';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditProfile'>;
 
@@ -29,11 +36,15 @@ type EditProfileFormData = z.infer<typeof editProfileSchema>;
 
 export const EditProfileScreen: React.FC = () => {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
-  
+
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [avatarUri, setAvatarUri] = useState<string | null>(user?.avatar || null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const {
     control,
@@ -47,28 +58,59 @@ export const EditProfileScreen: React.FC = () => {
     },
   });
 
+  const handlePickAvatar = async () => {
+    setUploadError(null);
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const asset = result.assets[0];
+      if (!asset.base64) {
+        setUploadError('Could not read image data');
+        return;
+      }
+
+      setUploading(true);
+
+      const avatarUrl = `data:image/jpeg;base64,${asset.base64}`;
+
+      if (user) {
+        const updatedUser = await authService.updateProfile({ avatarUrl });
+        setUser(updatedUser);
+        setAvatarUri(avatarUrl);
+      }
+    } catch (error: any) {
+      setUploadError(error.message || 'Photo upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const onSaveChanges = async (data: EditProfileFormData) => {
     if (!user) return;
 
     setLoading(true);
     try {
-      // Update profile via API
-      const updatedUser = await authService.updateProfile(user.id, {
+      const updatedUser = await authService.updateProfile({
         name: data.name,
         email: data.email,
       });
-      
-      // Update store (which also persists to AsyncStorage via login method)
+
       setUser(updatedUser);
-      
-      Alert.alert('Success', 'Profile updated successfully', [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
+
+      Alert.alert(t('common.success'), t('editProfile.updateSuccess'), [
+        { text: t('common.ok'), onPress: () => navigation.goBack() },
       ]);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to update profile');
+      Alert.alert(t('common.error'), error.message || t('editProfile.updateError'));
     } finally {
       setLoading(false);
     }
@@ -79,79 +121,101 @@ export const EditProfileScreen: React.FC = () => {
   }
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.content}
-    >
-      <Card style={styles.card}>
-        <Text
-          style={[
-            styles.title,
-            typography.headingSemiBold,
-            { color: colors.foreground },
-          ]}
-        >
-          Edit Profile
-        </Text>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['bottom']}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <Card style={styles.card}>
+          <Text style={[styles.title, typography.headingSemiBold, { color: colors.foreground }]}>
+            {t('editProfile.title')}
+          </Text>
 
-        <Text
-          style={[
-            styles.description,
-            typography.body,
-            { color: colors.mutedForeground },
-          ]}
-        >
-          Update your personal information below
-        </Text>
+          <View style={styles.avatarSection}>
+            <View style={styles.avatarWrapper}>
+              <TouchableOpacity
+                style={[styles.avatarContainer, { borderColor: colors.accent }]}
+                onPress={handlePickAvatar}
+                disabled={uploading}
+                activeOpacity={0.8}
+              >
+                {avatarUri ? (
+                  <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+                ) : (
+                  <View style={[styles.avatarPlaceholder, { backgroundColor: colors.muted }]}>
+                    <Ionicons name="person" size={40} color={colors.mutedForeground} />
+                  </View>
+                )}
 
-        <View style={styles.form}>
-          <Controller
-            control={control}
-            name="name"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <Input
-                label="Full Name"
-                placeholder="Enter your name"
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                error={errors.name?.message}
-              />
-            )}
-          />
+                {uploading && (
+                  <View style={styles.uploadOverlay}>
+                    <ActivityIndicator color={colors.primaryForeground} />
+                  </View>
+                )}
+              </TouchableOpacity>
 
-          <Controller
-            control={control}
-            name="email"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <Input
-                label="Email"
-                placeholder="Enter your email"
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                error={errors.email?.message}
-              />
-            )}
+              <View style={[styles.cameraBadge, { backgroundColor: colors.primary }]}>
+                <Ionicons name="camera-outline" size={16} color="#FFFFFF" />
+              </View>
+            </View>
+
+            {uploadError ? (
+              <Text style={[styles.uploadError, typography.body, { color: colors.destructive }]}>
+                {uploadError}
+              </Text>
+            ) : null}
+          </View>
+
+          <View style={styles.form}>
+            <Controller
+              control={control}
+              name="name"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label={t('editProfile.fullName')}
+                  placeholder={t('auth.fullNamePlaceholder')}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.name?.message}
+                />
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="email"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label={t('editProfile.email')}
+                  placeholder={t('auth.emailPlaceholder')}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  error={errors.email?.message}
+                />
+              )}
+            />
+          </View>
+        </Card>
+
+        <View style={styles.buttonSection}>
+          <Button
+            title={t('editProfile.save')}
+            onPress={handleSubmit(onSaveChanges)}
+            loading={loading}
+            disabled={uploading}
+            fullWidth
           />
         </View>
-      </Card>
-
-      <View style={styles.buttonSection}>
-        <Button
-          title="Save Changes"
-          onPress={handleSubmit(onSaveChanges)}
-          loading={loading}
-          fullWidth
-        />
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },
@@ -163,11 +227,54 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.sizes.xl,
-    marginBottom: spacing.sm,
-  },
-  description: {
-    fontSize: typography.sizes.sm,
     marginBottom: spacing.xl,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
+  avatarWrapper: {
+    position: 'relative',
+    width: 96,
+    height: 96,
+  },
+  avatarContainer: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 2,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  uploadOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  uploadError: {
+    fontSize: typography.sizes.sm,
+    marginTop: spacing.sm,
+    textAlign: 'center',
   },
   form: {
     gap: spacing.md,

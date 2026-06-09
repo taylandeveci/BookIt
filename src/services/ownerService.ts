@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import { Appointment, Employee, Service, Business } from '../types';
+import { Appointment, Employee, Service, Business, PendingEmployee, BusinessMedia } from '../types';
 
 export const ownerService = {
   // Business Management
@@ -56,42 +56,17 @@ export const ownerService = {
 
   // Service Management
   async createService(businessId: string, data: Partial<Service>): Promise<Service> {
-    console.log('[ownerService] Creating service with businessId:', businessId);
-    console.log('[ownerService] Service payload:', JSON.stringify(data, null, 2));
-    
-    const payload = {
-      businessId,
-      ...data,
-    };
-    
-    console.log('[ownerService] Full request payload:', JSON.stringify(payload, null, 2));
-    console.log('[ownerService] Request URL: /owner/services');
-    
     try {
-      const result = await apiClient.post<Service>('/owner/services', payload);
-      console.log('[ownerService] Service created successfully:', result);
+      const result = await apiClient.post<Service>('/owner/services', {
+        businessId,
+        ...data,
+      });
       return result;
     } catch (error: any) {
-      console.error('[ownerService] Create service failed:', error);
-      console.error('[ownerService] Error type:', error.constructor.name);
-      console.error('[ownerService] Error message:', error.message);
-      console.error('[ownerService] Error response status:', error.response?.status);
-      console.error('[ownerService] Error response data:', error.response?.data);
-      console.error('[ownerService] Error request:', error.request ? 'Request was made' : 'No request');
-      console.error('[ownerService] Full error:', JSON.stringify({
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-        hasResponse: !!error.response,
-        hasRequest: !!error.request,
-      }, null, 2));
-      
-      // Throw a more descriptive error
-      const errorMsg = error.response?.data?.message 
-        || error.response?.data?.error 
-        || error.message 
+      const errorMsg = error.response?.data?.message
+        || error.response?.data?.error
+        || error.message
         || 'Failed to create service';
-      
       throw new Error(errorMsg);
     }
   },
@@ -102,6 +77,42 @@ export const ownerService = {
 
   async deleteService(serviceId: string): Promise<void> {
     await apiClient.delete(`/owner/services/${serviceId}`);
+  },
+
+  // Pending employee management
+  async getPendingEmployees(): Promise<PendingEmployee[]> {
+    return await apiClient.get<PendingEmployee[]>('/owner/pending-employees');
+  },
+
+  async approveEmployee(employeeId: string): Promise<void> {
+    await apiClient.put(`/owner/employees/${employeeId}/approve`);
+  },
+
+  async rejectEmployee(employeeId: string): Promise<void> {
+    await apiClient.put(`/owner/employees/${employeeId}/reject`);
+  },
+
+  // Business settings (joinCode + toggles + booking rules)
+  async updateBusinessSettings(data: {
+    joinCodeEnabled?: boolean;
+    releaseOnEarlyCompletion?: boolean;
+    cancellationWindowMinutes?: number;
+    pendingBookingTTLHours?: number;
+  }): Promise<Business> {
+    return await apiClient.patch<Business>('/owner/business', data);
+  },
+
+  // Business Media
+  async getBusinessMedia(): Promise<BusinessMedia[]> {
+    return await apiClient.get<BusinessMedia[]>('/owner/business/media');
+  },
+
+  async addBusinessMedia(url: string): Promise<BusinessMedia> {
+    return await apiClient.post<BusinessMedia>('/owner/business/media', { url });
+  },
+
+  async deleteBusinessMedia(id: string): Promise<void> {
+    await apiClient.delete(`/owner/business/media/${id}`);
   },
 
   // Reviews Moderation

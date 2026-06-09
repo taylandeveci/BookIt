@@ -34,9 +34,16 @@ export const AuthScreen: React.FC = () => {
   const login = useAuthStore((state) => state.login);
   const [currentLang, setCurrentLang] = useState<'en' | 'tr'>(getCurrentLanguage());
   
-  const [roleTab, setRoleTab] = useState<'user' | 'owner'>('user');
+  const [roleTab, setRoleTab] = useState<'user' | 'employee' | 'owner'>('user');
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [loading, setLoading] = useState(false);
+
+  // Employee-specific registration state
+  const [joinCode, setJoinCode] = useState('');
+  const [joinCodeError, setJoinCodeError] = useState('');
+  const [joinCodeVerified, setJoinCodeVerified] = useState(false);
+  const [verifiedBusinessName, setVerifiedBusinessName] = useState('');
+  const [joinCodeLoading, setJoinCodeLoading] = useState(false);
 
   const handleLanguageChange = async (lang: 'en' | 'tr') => {
     await setAppLanguage(lang);
@@ -64,6 +71,7 @@ export const AuthScreen: React.FC = () => {
     confirmPassword: '',
     phone: '',
     businessName: '',
+    specialization: '',
   });
 
   const [registerErrors, setRegisterErrors] = useState<{
@@ -73,19 +81,20 @@ export const AuthScreen: React.FC = () => {
     confirmPassword?: string;
     phone?: string;
     businessName?: string;
+    joinCode?: string;
   }>({});
 
   const onLogin = async (data: LoginFormData) => {
     setLoading(true);
     try {
-      // Map roleTab to expected UserRole
-      const expectedRole = roleTab === 'user' ? 'USER' : 'OWNER';
+      const expectedRole = roleTab === 'user' ? 'USER' : roleTab === 'employee' ? 'EMPLOYEE' : 'OWNER';
       await login(data, expectedRole);
     } catch (error: any) {
-      // Check if it's a role mismatch error
-      if (error.message === 'Role mismatch') {
-        const errorKey = error.expectedRole === 'USER' 
-          ? 'auth.roleMismatchCustomer' 
+      if (error.code === 'EMPLOYEE_REJECTED') {
+        Alert.alert(t('common.error'), t('auth.employeeRejected'));
+      } else if (error.message === 'Role mismatch') {
+        const errorKey = error.expectedRole === 'USER'
+          ? 'auth.roleMismatchCustomer'
           : 'auth.roleMismatchOwner';
         Alert.alert(t('common.error'), t(errorKey));
       } else {
@@ -93,6 +102,27 @@ export const AuthScreen: React.FC = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onVerifyJoinCode = async () => {
+    const code = joinCode.trim().toUpperCase();
+    if (code.length !== 6) {
+      setJoinCodeError(t('auth.joinCodeLength'));
+      return;
+    }
+    setJoinCodeLoading(true);
+    setJoinCodeError('');
+    setJoinCodeVerified(false);
+    try {
+      const result = await authService.verifyJoinCode(code);
+      setVerifiedBusinessName(result.businessName);
+      setJoinCodeVerified(true);
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.message || t('auth.invalidCode');
+      setJoinCodeError(msg);
+    } finally {
+      setJoinCodeLoading(false);
     }
   };
 
@@ -104,26 +134,30 @@ export const AuthScreen: React.FC = () => {
     const errors: typeof registerErrors = {};
     
     if (!registerForm.fullName || registerForm.fullName.trim().length < 2) {
-      errors.fullName = 'Name must be at least 2 characters';
+      errors.fullName = t('auth.nameMinLength');
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!registerForm.email || !emailRegex.test(registerForm.email)) {
-      errors.email = 'Invalid email address';
+      errors.email = t('auth.invalidEmail');
     }
-    
+
     if (!registerForm.password || registerForm.password.length < 6) {
-      errors.password = 'Password must be at least 6 characters';
+      errors.password = t('auth.passwordMinLength');
     }
-    
+
     if (!registerForm.confirmPassword) {
-      errors.confirmPassword = 'Please confirm your password';
+      errors.confirmPassword = t('auth.confirmPasswordRequired');
     } else if (registerForm.password !== registerForm.confirmPassword) {
-      errors.confirmPassword = "Passwords don't match";
+      errors.confirmPassword = t('auth.passwordsNotMatch');
     }
-    
+
     if (roleTab === 'owner' && (!registerForm.businessName || registerForm.businessName.trim() === '')) {
-      errors.businessName = 'Business name is required for business owners';
+      errors.businessName = t('auth.businessNameRequired');
+    }
+
+    if (roleTab === 'employee' && !joinCodeVerified) {
+      errors.joinCode = t('auth.verifyCodeFirst');
     }
 
     // If there are validation errors, show them and return
@@ -134,45 +168,38 @@ export const AuthScreen: React.FC = () => {
 
     setLoading(true);
     try {
-      let payload;
-      
       if (roleTab === 'owner') {
-        payload = {
+        await authService.registerOwner({
           fullName: registerForm.fullName.trim(),
           email: registerForm.email.trim().toLowerCase(),
           password: registerForm.password,
           phone: registerForm.phone?.trim() || undefined,
           businessName: registerForm.businessName.trim(),
-        };
-        
-        console.log('[REGISTER] OWNER PAYLOAD:', payload);
-        await authService.registerOwner(payload);
+        });
+      } else if (roleTab === 'employee') {
+        await authService.registerEmployee({
+          fullName: registerForm.fullName.trim(),
+          email: registerForm.email.trim().toLowerCase(),
+          password: registerForm.password,
+          joinCode: joinCode.trim().toUpperCase(),
+          specialization: registerForm.specialization.trim() || undefined,
+        });
       } else {
-        payload = {
+        await authService.registerUser({
           fullName: registerForm.fullName.trim(),
           email: registerForm.email.trim().toLowerCase(),
           password: registerForm.password,
           phone: registerForm.phone?.trim() || undefined,
-        };
-        
-        console.log('[REGISTER] USER PAYLOAD:', payload);
-        await authService.registerUser(payload);
+        });
       }
-      
-      console.log('[REGISTER] Success, logging in...');
-      
+
       // After registration, login with the same credentials
-      await login({ 
-        email: registerForm.email.trim().toLowerCase(), 
-        password: registerForm.password 
+      await login({
+        email: registerForm.email.trim().toLowerCase(),
+        password: registerForm.password,
       });
-      
-      console.log('[REGISTER] Login successful');
     } catch (error: any) {
-      console.error('[REGISTER] Error:', error);
-      
-      // Extract detailed error message
-      let errorMessage = 'Registration failed';
+      let errorMessage = t('auth.registerError');
       
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
@@ -185,7 +212,7 @@ export const AuthScreen: React.FC = () => {
         errorMessage = `${error.response.data.field}: ${errorMessage}`;
       }
       
-      Alert.alert('Registration Error', errorMessage);
+      Alert.alert(t('auth.registerError'), errorMessage);
     } finally {
       setLoading(false);
     }
@@ -200,7 +227,7 @@ export const AuthScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <BackendHealthCheck />
+        {__DEV__ && <BackendHealthCheck />}
         
         {/* Language Toggle */}
         <View style={styles.languageToggle}>
@@ -270,6 +297,11 @@ export const AuthScreen: React.FC = () => {
             label={t('auth.customer')}
             selected={roleTab === 'user'}
             onPress={() => setRoleTab('user')}
+          />
+          <Chip
+            label={t('auth.employee')}
+            selected={roleTab === 'employee'}
+            onPress={() => setRoleTab('employee')}
           />
           <Chip
             label={t('auth.businessOwner')}
@@ -367,43 +399,48 @@ export const AuthScreen: React.FC = () => {
                 </Text>
                 <View style={styles.demoButtonRow}>
                   <TouchableOpacity
-                    style={[styles.demoButton, { backgroundColor: colors.muted }]}
+                    style={[styles.demoButton, { borderWidth: 1, borderColor: colors.primary }]}
                     onPress={() => {
-                      setLoginValue('email', 'user@test.com');
-                      setLoginValue('password', '123456');
+                      setRoleTab('user');
+                      setLoginValue('email', 'customer@demo.com');
+                      setLoginValue('password', 'demo1234');
                     }}
                   >
-                    <Ionicons name="person" size={16} color={colors.primary} />
-                    <Text style={[styles.demoButtonText, typography.body, { color: colors.foreground }]}>
-                      {t('auth.customerDemo')}
+                    <Ionicons name="person-outline" size={16} color={colors.primary} />
+                    <Text style={[styles.demoButtonText, typography.body, { color: colors.primary }]}>
+                      {t('auth.customer')}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.demoButton, { backgroundColor: colors.muted }]}
+                    style={[styles.demoButton, { borderWidth: 1, borderColor: colors.primary }]}
                     onPress={() => {
-                      setLoginValue('email', 'owner@test.com');
-                      setLoginValue('password', '123456');
+                      setRoleTab('owner');
+                      setLoginValue('email', 'owner@demo.com');
+                      setLoginValue('password', 'demo1234');
                     }}
                   >
-                    <Ionicons name="business" size={16} color={colors.primary} />
-                    <Text style={[styles.demoButtonText, typography.body, { color: colors.foreground }]}>
-                      {t('auth.ownerDemo')}
+                    <Ionicons name="business-outline" size={16} color={colors.primary} />
+                    <Text style={[styles.demoButtonText, typography.body, { color: colors.primary }]}>
+                      {t('auth.businessOwner')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.demoButton, { borderWidth: 1, borderColor: colors.primary }]}
+                    onPress={() => {
+                      setRoleTab('employee');
+                      setLoginValue('email', 'ahmet@craftstudio.com');
+                      setLoginValue('password', 'demo1234');
+                    }}
+                  >
+                    <Ionicons name="cut-outline" size={16} color={colors.primary} />
+                    <Text style={[styles.demoButtonText, typography.body, { color: colors.primary }]}>
+                      {t('auth.employee')}
                     </Text>
                   </TouchableOpacity>
                 </View>
               </View>
             )}
 
-            <Text
-              style={[
-                styles.hint,
-                typography.body,
-                { color: colors.mutedForeground },
-              ]}
-            >
-              Demo: {roleTab === 'user' ? 'user@test.com' : 'owner@test.com'} /
-              123456
-            </Text>
           </View>
         ) : (
           <View style={styles.form}>
@@ -482,16 +519,94 @@ export const AuthScreen: React.FC = () => {
                   error={registerErrors.businessName}
                   autoCapitalize="words"
                 />
-                
                 <Text
                   style={[
                     styles.hint,
                     typography.body,
-                    { color: colors.mutedForeground, marginTop: spacing.xs },
+                    { color: colors.mutedForeground },
                   ]}
                 >
-                  You can update business details after registration
+                  {t('auth.updateDetailsLater')}
                 </Text>
+
+                {/* Business Verification */}
+                <View style={styles.verificationSection}>
+                  <Text style={[typography.bodySemiBold, { color: colors.foreground, fontSize: typography.sizes.md }]}>
+                    {t('auth.businessVerification')}
+                  </Text>
+                  <Text style={[typography.body, { color: colors.mutedForeground, fontSize: typography.sizes.sm, marginTop: spacing.xs }]}>
+                    {t('auth.businessVerificationSubtitle')}
+                  </Text>
+
+                  <View style={{ marginTop: spacing.md }}>
+                    <Input
+                      placeholder={t('auth.taxNumber')}
+                      keyboardType="numeric"
+                    />
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.uploadRow, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="cloud-upload-outline" size={20} color={colors.primary} />
+                    <Text style={[typography.bodySemiBold, { color: colors.foreground, fontSize: typography.sizes.sm, flex: 1 }]}>
+                      {t('auth.uploadDocument')}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+
+                  <Text style={[typography.body, { color: colors.mutedForeground, fontSize: typography.sizes.xs, marginTop: spacing.sm }]}>
+                    {t('auth.verificationDisclaimer')}
+                  </Text>
+                </View>
+              </>
+            )}
+
+            {roleTab === 'employee' && (
+              <>
+                <View style={styles.joinCodeRow}>
+                  <View style={{ flex: 1 }}>
+                    <Input
+                      label={`${t('auth.joinCode')} *`}
+                      placeholder="XXXXXX"
+                      value={joinCode}
+                      onChangeText={(text) => {
+                        setJoinCode(text.toUpperCase());
+                        setJoinCodeVerified(false);
+                        setJoinCodeError('');
+                      }}
+                      error={registerErrors.joinCode || joinCodeError}
+                      autoCapitalize="characters"
+                      maxLength={6}
+                    />
+                  </View>
+                  <View style={styles.verifyButtonWrapper}>
+                    <Button
+                      title={joinCodeLoading ? '...' : t('auth.verifyCode')}
+                      onPress={onVerifyJoinCode}
+                      loading={joinCodeLoading}
+                      variant="outline"
+                    />
+                  </View>
+                </View>
+
+                {joinCodeVerified && (
+                  <View style={[styles.verifiedBadge, { backgroundColor: colors.muted }]}>
+                    <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                    <Text style={[typography.body, { color: colors.success, fontSize: 13 }]}>
+                      {t('auth.codeVerifiedFor', { businessName: verifiedBusinessName })}
+                    </Text>
+                  </View>
+                )}
+
+                <Input
+                  label={`${t('auth.specialization')} (${t('common.optional')})`}
+                  placeholder={t('auth.specializationPlaceholder')}
+                  value={registerForm.specialization}
+                  onChangeText={(text) => setRegisterForm(prev => ({ ...prev, specialization: text }))}
+                  autoCapitalize="sentences"
+                />
               </>
             )}
 
@@ -514,7 +629,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    padding: spacing.xl,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xl,
     justifyContent: 'center',
   },
   languageToggle: {
@@ -575,16 +691,19 @@ const styles = StyleSheet.create({
   },
   demoButtonRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    gap: spacing.md,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.sm,
   },
   demoButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
     gap: spacing.xs,
+    minHeight: 44,
   },
   demoButtonText: {
     fontSize: typography.sizes.sm,
@@ -595,5 +714,35 @@ const styles = StyleSheet.create({
   licenseLabel: {
     fontSize: typography.sizes.sm,
     marginBottom: spacing.sm,
+  },
+  joinCodeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+  },
+  verifyButtonWrapper: {
+    paddingBottom: 2,
+    minWidth: 90,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+  },
+  verificationSection: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  uploadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
   },
 });

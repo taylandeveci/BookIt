@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,6 @@ import { useTranslation } from 'react-i18next';
 import { UserTabParamList, RootStackParamList } from '../../navigation/RootNavigator';
 import { authService } from '../../services/authService';
 import { appointmentService } from '../../services/appointmentService';
-import { businessService } from '../../services/businessService';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
 import { useTheme } from '../../theme/useTheme';
@@ -25,6 +24,7 @@ import { Button, Card, EmptyState, LoadingSpinner, Toast } from '../../component
 import { spacing, typography, borderRadius } from '../../theme/theme';
 import { Appointment, Business, Service } from '../../types';
 import { setAppLanguage, getCurrentLanguage } from '../../localization/i18n';
+import { useNotificationStore } from '../../store/notificationStore';
 
 type NavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<UserTabParamList, 'Profile'>,
@@ -42,6 +42,9 @@ export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
+  const unreadCount = useNotificationStore((s) =>
+    s.notifications.filter((n) => !n.read && n.userId === user?.id).length
+  );
   const logout = useAuthStore((state) => state.logout);
   const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
@@ -73,40 +76,13 @@ export const ProfileScreen: React.FC = () => {
     try {
       setAppointmentsLoading(true);
       const data = await appointmentService.getAppointments(user.id);
-      
-      // Ensure data is an array
-      const appointmentsArray = Array.isArray(data) ? data : [];
-      
-      // Fetch related business and service data
-      const appointmentsWithDetails = await Promise.all(
-        appointmentsArray.map(async (apt) => {
-          try {
-            const [business, services] = await Promise.all([
-              businessService.getBusiness(apt.businessId),
-              businessService.getServices(apt.businessId),
-            ]);
-            const service = services.find((s) => s.id === apt.serviceId);
-            
-            return {
-              ...apt,
-              business,
-              service,
-            };
-          } catch (detailError) {
-            // If fetching details fails, return appointment without details
-            return apt;
-          }
-        })
-      );
-      
-      setAppointments(appointmentsWithDetails);
+      setAppointments(Array.isArray(data) ? (data as AppointmentWithDetails[]) : []);
     } catch (error: any) {
-      console.error('Failed to load appointments:', error);
       
       // Handle auth errors gracefully
-      const errorMessage = error.message || 'Failed to load appointments';
+      const errorMessage = error.message || t('profile.loadError');
       if (errorMessage.includes('permission') || errorMessage.includes('Authentication') || errorMessage.includes('log in')) {
-        setToast({ message: 'Lütfen tekrar giriş yapın', type: 'error' });
+        setToast({ message: t('profile.loginAgain'), type: 'error' });
         // Clear appointments but don't crash
         setAppointments([]);
       } else {
@@ -150,7 +126,6 @@ export const ProfileScreen: React.FC = () => {
   const handleLogout = () => {
     // Prevent triggering if already logging out
     if (isLoggingOut) {
-      console.log('[UI] Logout button pressed but already logging out');
       return;
     }
     
@@ -189,6 +164,18 @@ export const ProfileScreen: React.FC = () => {
         />
       )}
       
+      {/* Top bar with bell */}
+      <View style={styles.topBar}>
+        <TouchableOpacity style={styles.bellWrap} onPress={() => navigation.navigate('Notifications')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Ionicons name="notifications-outline" size={22} color={colors.foreground} />
+          {unreadCount > 0 && (
+            <View style={[styles.badge, { backgroundColor: colors.destructive }]}>
+              <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : String(unreadCount)}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
       {/* Profile Header */}
       <Card style={styles.card}>
         <View style={styles.profileHeader}>
@@ -203,7 +190,7 @@ export const ProfileScreen: React.FC = () => {
               { color: colors.foreground },
             ]}
           >
-            {user.name || 'User'}
+            {user.name || t('profile.guestUser')}
           </Text>
           
           <Text
@@ -260,7 +247,7 @@ export const ProfileScreen: React.FC = () => {
                 { color: colors.mutedForeground, marginTop: spacing.md, textAlign: 'center' },
               ]}
             >
-              You don't have any appointments yet
+              {t('profile.noAppointments')}
             </Text>
           </View>
         ) : (
@@ -274,7 +261,7 @@ export const ProfileScreen: React.FC = () => {
                     { color: colors.mutedForeground, marginBottom: spacing.sm },
                   ]}
                 >
-                  Active
+                  {t('profile.active')}
                 </Text>
                 {appointments
                   .filter((apt) => apt.status === 'PENDING' || apt.status === 'APPROVED')
@@ -311,7 +298,7 @@ export const ProfileScreen: React.FC = () => {
                             { color: colors.mutedForeground, fontSize: typography.sizes.xs, marginTop: spacing.xs },
                           ]}
                         >
-                          {new Date(apt.date || apt.startTime || '').toLocaleDateString()} at {apt.timeSlot || (apt.startTime ? new Date(apt.startTime).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : 'TBD')}
+                          {new Date(apt.date || apt.startTime || '').toLocaleDateString()} {t('time.at')} {apt.timeSlot || (apt.startTime ? new Date(apt.startTime).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : 'TBD')}
                         </Text>
                       </View>
                       <View style={styles.appointmentStatus}>
@@ -335,7 +322,7 @@ export const ProfileScreen: React.FC = () => {
                     { color: colors.mutedForeground, marginBottom: spacing.sm },
                   ]}
                 >
-                  Past
+                  {t('profile.past')}
                 </Text>
                 {appointments
                   .filter((apt) => apt.status === 'COMPLETED' || apt.status === 'CANCELLED')
@@ -372,7 +359,7 @@ export const ProfileScreen: React.FC = () => {
                             { color: colors.mutedForeground, fontSize: typography.sizes.xs, marginTop: spacing.xs },
                           ]}
                         >
-                          {new Date(apt.date || apt.startTime || '').toLocaleDateString()} at {apt.timeSlot || (apt.startTime ? new Date(apt.startTime).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : 'TBD')}
+                          {new Date(apt.date || apt.startTime || '').toLocaleDateString()} {t('time.at')} {apt.timeSlot || (apt.startTime ? new Date(apt.startTime).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : 'TBD')}
                         </Text>
                       </View>
                       <View style={styles.appointmentStatus}>
@@ -398,11 +385,11 @@ export const ProfileScreen: React.FC = () => {
             { color: colors.foreground },
           ]}
         >
-          Security
+          {t('profile.security')}
         </Text>
 
         <Button
-          title="Change Password"
+          title={t('profile.changePassword')}
           onPress={() => navigation.navigate('ChangePassword')}
           fullWidth
           variant="outline"
@@ -437,7 +424,7 @@ export const ProfileScreen: React.FC = () => {
                 { color: colors.mutedForeground },
               ]}
             >
-              Switch between light and dark theme
+              {t('profile.themeSubtitle')}
             </Text>
           </View>
           <Switch
@@ -507,7 +494,7 @@ export const ProfileScreen: React.FC = () => {
                 { color: colors.foreground },
               ]}
             >
-              Notifications
+              {t('profile.notifications')}
             </Text>
             <Text
               style={[
@@ -516,7 +503,7 @@ export const ProfileScreen: React.FC = () => {
                 { color: colors.mutedForeground },
               ]}
             >
-              Receive appointment updates
+              {t('profile.receiveUpdates')}
             </Text>
           </View>
           <Switch
@@ -578,6 +565,31 @@ const styles = StyleSheet.create({
   },
   card: {
     marginBottom: spacing.lg,
+  },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingBottom: spacing.sm,
+  },
+  bellWrap: {
+    position: 'relative',
+    padding: spacing.xs,
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   profileHeader: {
     alignItems: 'center',

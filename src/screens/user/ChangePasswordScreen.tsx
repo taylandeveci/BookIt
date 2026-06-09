@@ -10,6 +10,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { authService } from '../../services/authService';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/useTheme';
@@ -31,6 +32,7 @@ type PasswordFormData = z.infer<typeof passwordSchema>;
 
 export const ChangePasswordScreen: React.FC = () => {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const user = useAuthStore((state) => state.user);
   const [loading, setLoading] = useState(false);
@@ -49,13 +51,13 @@ export const ChangePasswordScreen: React.FC = () => {
 
     setLoading(true);
     try {
-      await authService.changePassword(user.id, data.currentPassword, data.newPassword);
+      await authService.changePassword(data.currentPassword, data.newPassword);
       Alert.alert(
-        'Success',
-        'Password changed successfully',
+        t('common.success'),
+        t('changePassword.updateSuccess'),
         [
           {
-            text: 'OK',
+            text: t('common.ok'),
             onPress: () => {
               reset();
               navigation.goBack();
@@ -64,7 +66,7 @@ export const ChangePasswordScreen: React.FC = () => {
         ]
       );
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to change password');
+      Alert.alert(t('common.error'), error.message || t('changePassword.updateError'));
     } finally {
       setLoading(false);
     }
@@ -83,17 +85,7 @@ export const ChangePasswordScreen: React.FC = () => {
             { color: colors.foreground },
           ]}
         >
-          Change Password
-        </Text>
-
-        <Text
-          style={[
-            styles.description,
-            typography.body,
-            { color: colors.mutedForeground },
-          ]}
-        >
-          Enter your current password and choose a new one
+          {t('changePassword.title')}
         </Text>
 
         <Controller
@@ -101,7 +93,7 @@ export const ChangePasswordScreen: React.FC = () => {
           name="currentPassword"
           render={({ field: { onChange, onBlur, value } }) => (
             <Input
-              label="Current Password"
+              label={t('changePassword.currentPassword')}
               placeholder="••••••••"
               value={value}
               onChangeText={onChange}
@@ -117,7 +109,7 @@ export const ChangePasswordScreen: React.FC = () => {
           name="newPassword"
           render={({ field: { onChange, onBlur, value } }) => (
             <Input
-              label="New Password"
+              label={t('changePassword.newPassword')}
               placeholder="••••••••"
               value={value}
               onChangeText={onChange}
@@ -133,7 +125,7 @@ export const ChangePasswordScreen: React.FC = () => {
           name="confirmPassword"
           render={({ field: { onChange, onBlur, value } }) => (
             <Input
-              label="Confirm New Password"
+              label={t('changePassword.confirmPassword')}
               placeholder="••••••••"
               value={value}
               onChangeText={onChange}
@@ -145,7 +137,7 @@ export const ChangePasswordScreen: React.FC = () => {
         />
 
         <Button
-          title="Update Password"
+          title={t('changePassword.save')}
           onPress={handleSubmit(onChangePassword)}
           loading={loading}
           fullWidth
@@ -167,10 +159,6 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.sizes.xxl,
-    marginBottom: spacing.sm,
-  },
-  description: {
-    fontSize: typography.sizes.md,
     marginBottom: spacing.xl,
   },
 });

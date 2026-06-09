@@ -4,12 +4,12 @@
     "slug": "bookit",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/BookIT.png",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/BookIT.png",
       "resizeMode": "contain",
-      "backgroundColor": "#5D7052"
+      "backgroundColor": "#FDFCF8"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -20,19 +20,19 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#5D7052"
+        "foregroundImage": "./assets/BookIT.png",
+        "backgroundColor": "#FDFCF8"
       },
       "package": "com.bookit.app"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/BookIT.png"
     },
     "plugins": [
       [
-        "expo-calendar",
+        "expo-location",
         {
-          "calendarPermission": "Allow BookIT to access your calendar for appointment management."
+          "locationWhenInUsePermission": "Allow BookIT to use your location to show nearby businesses."
         }
       ]
     ]

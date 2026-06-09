@@ -1,5 +1,6 @@
-export type UserRole = 'USER' | 'OWNER';
-export type BusinessCategory = 'barber' | 'hairdresser' | 'beauty' | 'restaurant';
+export type UserRole = 'USER' | 'EMPLOYEE' | 'OWNER';
+
+export type EmployeeStatus = 'PENDING' | 'ACTIVE' | 'REJECTED';
 
 export interface User {
   id: string;
@@ -7,18 +8,14 @@ export interface User {
   name: string;
   role: UserRole;
   avatar?: string;
-}
-
-export interface BusinessOwner extends User {
-  role: 'OWNER';
-  businessLicenseUri?: string;
-  businessLicenseVerified: boolean;
-  businessInfo?: {
-    description: string;
-    address: string;
-    phone: string;
+  employee?: {
+    id: string;
+    status: EmployeeStatus;
+    businessId: string;
   };
 }
+
+
 
 export interface Business {
   id: string;
@@ -34,9 +31,24 @@ export interface Business {
   status?: string;
   averageRating?: number;
   reviewCount?: number;
-  distance?: number; // in km
+  distance?: number;
   images?: string[];
+  media?: Array<{ id: string; url: string; createdAt: string }>;
   createdAt?: string;
+  joinCode?: string;
+  joinCodeEnabled?: boolean;
+  releaseOnEarlyCompletion?: boolean;
+  cancellationWindowMinutes?: number;
+  pendingBookingTTLHours?: number;
+  tags?: string[];
+}
+
+export interface PendingEmployee {
+  id: string;
+  fullName: string;
+  specialization?: string;
+  createdAt: string;
+  user?: { email: string };
 }
 
 export interface Employee {
@@ -46,6 +58,7 @@ export interface Employee {
   photoUrl?: string;
   isActive?: boolean;
   createdAt?: string;
+  userId?: string | null;
 }
 
 export interface Service {
@@ -59,7 +72,7 @@ export interface Service {
   createdAt?: string;
 }
 
-export type AppointmentStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'COMPLETED';
+export type AppointmentStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'COMPLETED' | 'IN_PROGRESS' | 'NO_SHOW' | 'DISPUTED';
 
 export interface Appointment {
   id: string;
@@ -76,6 +89,11 @@ export interface Appointment {
   createdAt?: string;
   updatedAt?: string;
   rejectionReason?: string;
+  cancellationReason?: string;
+  customerArrivalConfirmed?: boolean | null;
+  businessArrivalConfirmed?: boolean | null;
+  arrivalConfirmedAt?: string | null;
+  review?: { id: string } | null;
   // Relations that might be included
   business?: Business;
   employee?: Employee;
@@ -87,18 +105,22 @@ export interface Appointment {
   };
 }
 
-export type ReviewStatus = 'PENDING' | 'APPROVED';
+export type ReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface Review {
   id: string;
-  appointmentId: string;
+  appointmentId?: string;
+  reservationId?: string;
   userId: string;
   businessId: string;
   rating: number; // 1-5
-  comment: string;
+  comment?: string;
+  commentText?: string;
   status: ReviewStatus;
   createdAt: string;
   approvedAt?: string;
+  user?: { id: string; fullName: string };
+  reservation?: { service?: { name: string } };
 }
 
 export interface TimeSlot {
@@ -155,8 +177,16 @@ export interface ReviewFormData {
   comment: string;
 }
 
+export interface BusinessMedia {
+  id: string;
+  url: string;
+  businessId: string;
+  createdAt: string;
+}
+
 export interface FilterOptions {
   minRating?: number;
   maxDistance?: number;
   search?: string;
+  serviceName?: string;
 }
