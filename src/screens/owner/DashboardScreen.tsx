@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,11 @@ import {
   TouchableOpacity,
   Pressable,
   Animated,
-  Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../../lib/queryKeys';
-import { BarChart } from 'react-native-gifted-charts';
+import { PieChart } from 'react-native-gifted-charts';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -28,8 +27,6 @@ import { formatCurrency } from '../../lib/formatCurrency';
 import { useNotificationStore } from '../../store/notificationStore';
 import { spacing, typography, borderRadius } from '../../theme/theme';
 import { PendingEmployee } from '../../types';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ---------------------------------------------------------------------------
 // Types
@@ -117,7 +114,7 @@ function trendPct(current: number, previous: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// Bar colors — explicit hex values per spec
+// Pie segment colors — explicit hex values per spec
 // ---------------------------------------------------------------------------
 
 const BAR_COLORS = {
@@ -127,156 +124,50 @@ const BAR_COLORS = {
   cancelled: '#A85448',
 };
 
-// ---------------------------------------------------------------------------
-// Y-axis helpers
-// ---------------------------------------------------------------------------
-
-function niceStep(rawMax: number): { max: number; sections: number } {
-  if (rawMax <= 0) return { max: 4, sections: 4 };
-  // Pick a step that gives 4–6 clean grid lines
-  const candidates = [1, 2, 5, 10, 20, 50, 100];
-  const step = candidates.find(s => s * 4 >= rawMax) ?? Math.ceil(rawMax / 4);
-  const sections = Math.ceil(rawMax / step);
-  return { max: step * sections, sections };
+interface PieSegmentDatum {
+  value: number;
+  color: string;
+  onPress: () => void;
+  shiftX?: number;
+  shiftY?: number;
 }
 
 // ---------------------------------------------------------------------------
-// Chart data builder
-// ---------------------------------------------------------------------------
-
-function buildChartData(
-  apts: DashApt[],
-  filter: RangeFilter,
-  mutedForeground: string,
-  locale: string
-): object[] {
-  type Group = { label: string; start: number; end: number };
-  const allGroups: Group[] = [];
-  const now = new Date();
-
-  if (filter === 'Day') {
-    const HOURS = [8, 10, 12, 14, 16, 18];
-    const LABELS = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00'];
-    HOURS.forEach((h, i) => {
-      const s = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h);
-      const e = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h + 2);
-      allGroups.push({ label: LABELS[i], start: s.getTime(), end: e.getTime() - 1 });
-    });
-  } else if (filter === 'Month') {
-    const y = now.getFullYear();
-    const m = now.getMonth();
-    [[1, 7], [8, 14], [15, 21], [22, 31]].forEach(([ws, we], i) => {
-      allGroups.push({
-        label: `H${i + 1}`,
-        start: new Date(y, m, ws).getTime(),
-        end: new Date(y, m, we, 23, 59, 59, 999).getTime(),
-      });
-    });
-  } else {
-    const y = now.getFullYear();
-    const dateLocale = locale === 'tr' ? 'tr-TR' : 'en-US';
-    const monthFormatter = new Intl.DateTimeFormat(dateLocale, { month: 'short' });
-    const MONTH_LABELS = Array.from({ length: 12 }, (_, i) =>
-      monthFormatter.format(new Date(2000, i, 1))
-    );
-    for (let mo = 0; mo < 12; mo++) {
-      allGroups.push({
-        label: MONTH_LABELS[mo],
-        start: new Date(y, mo, 1).getTime(),
-        end: new Date(y, mo + 1, 0, 23, 59, 59, 999).getTime(),
-      });
-    }
-  }
-
-  const CHARTED_STATUSES = new Set(['COMPLETED', 'APPROVED', 'NO_SHOW', 'CANCELLED']);
-  const groups = allGroups.filter(group =>
-    apts.some(a => {
-      if (!a.startTime || !CHARTED_STATUSES.has(a.status)) return false;
-      const t = new Date(a.startTime).getTime();
-      return t >= group.start && t <= group.end;
-    })
-  );
-
-  if (groups.length === 0) return [];
-
-  // Spread bars to fill available width when few groups exist
-  const groupCount = groups.length;
-  const groupSpacing = groupCount <= 2 ? 60 : groupCount <= 4 ? 40 : 20;
-
-  const barColorsArr = [
-    BAR_COLORS.completed,
-    BAR_COLORS.confirmed,
-    BAR_COLORS.noShow,
-    BAR_COLORS.cancelled,
-  ];
-
-  // X-axis label anchored to the 2nd bar (Onaylandı) — visually centers the label under the group
-  const labelTextStyle = {
-    fontFamily: 'Nunito_400Regular',
-    fontSize: 10,
-    color: mutedForeground,
-    textAlign: 'center' as const,
-    width: 36,
-  };
-
-  const data: object[] = [];
-
-  groups.forEach(group => {
-    const g = apts.filter(a => {
-      if (!a.startTime) return false;
-      const t = new Date(a.startTime).getTime();
-      return t >= group.start && t <= group.end;
-    });
-
-    const counts = [
-      g.filter(a => a.status === 'COMPLETED').length,
-      g.filter(a => a.status === 'APPROVED').length,
-      g.filter(a => a.status === 'NO_SHOW').length,
-      g.filter(a => a.status === 'CANCELLED').length,
-    ];
-
-    counts.forEach((val, idx) => {
-      const isLabel = idx === 1;
-      const isLast = idx === 3;
-      const color = barColorsArr[idx];
-
-      data.push({
-        value: val,
-        frontColor: val > 0 ? color : 'transparent',
-        barWidth: 14,
-        barBorderRadius: val > 0 ? 6 : 0,
-        spacing: isLast ? groupSpacing : 3,
-        ...(isLabel ? { label: group.label, labelTextStyle } : {}),
-        ...(val > 0 ? {
-          topLabelComponent: () => (
-            <Text style={{ color, fontFamily: 'Nunito_700Bold', fontSize: 9, textAlign: 'center' }}>
-              {String(val)}
-            </Text>
-          ),
-        } : {}),
-      });
-    });
-  });
-
-  return data;
-}
-
-// ---------------------------------------------------------------------------
-// Stat block (2x2 grid below chart)
+// Stat block (2x2 legend grid below chart)
 // ---------------------------------------------------------------------------
 
 interface StatBlockProps {
   label: string;
   count: number;
   color: string;
+  highlighted?: boolean;
 }
 
-const StatBlock: React.FC<StatBlockProps> = ({ label, count, color }) => {
+const StatBlock: React.FC<StatBlockProps> = ({ label, count, color, highlighted }) => {
   const { colors } = useTheme();
   return (
-    <View style={statBlockStyles.block}>
+    <View
+      style={[
+        statBlockStyles.block,
+        highlighted && { backgroundColor: color + '1A', borderRadius: borderRadius.lg },
+      ]}
+    >
       <View style={statBlockStyles.labelRow}>
-        <View style={[statBlockStyles.dot, { backgroundColor: color }]} />
+        <View
+          style={[
+            statBlockStyles.dot,
+            { backgroundColor: color },
+            highlighted && {
+              width: 12,
+              height: 12,
+              shadowColor: color,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.5,
+              shadowRadius: 4,
+              elevation: 3,
+            },
+          ]}
+        />
         <Text style={[typography.bodySemiBold, { color: colors.mutedForeground, fontSize: 13 }]}>
           {label}
         </Text>
@@ -461,7 +352,7 @@ const RANGES: RangeFilter[] = ['Day', 'Month', 'Year'];
 
 export const DashboardScreen: React.FC = () => {
   const { colors, shadows } = useTheme();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -471,6 +362,7 @@ export const DashboardScreen: React.FC = () => {
   const [empActionLoading, setEmpActionLoading] = useState<string | null>(null);
   const addNotification = useNotificationStore((s) => s.addNotification);
   const [unseenCount, setUnseenCount] = useState(0);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
   const ratingCardScale = React.useRef(new Animated.Value(1)).current;
 
   // --- Queries ---
@@ -566,11 +458,6 @@ export const DashboardScreen: React.FC = () => {
     [allApts, previousRange]
   );
 
-  const chartData = useMemo(
-    () => buildChartData(filteredApts, selectedRange, colors.mutedForeground, i18n.language),
-    [filteredApts, selectedRange, colors.mutedForeground, i18n.language]
-  );
-
   const statusCounts = useMemo(() => ({
     completed: filteredApts.filter(a => a.status === 'COMPLETED').length,
     confirmed: filteredApts.filter(a => a.status === 'APPROVED').length,
@@ -578,11 +465,53 @@ export const DashboardScreen: React.FC = () => {
     cancelled: filteredApts.filter(a => a.status === 'CANCELLED').length,
   }), [filteredApts]);
 
-  const chartScale = useMemo(() => {
-    if (chartData.length === 0) return { max: 4, sections: 4 };
-    const rawMax = Math.max(...(chartData as any[]).map((d: any) => d.value as number));
-    return niceStep(rawMax);
-  }, [chartData]);
+  const totalCount =
+    statusCounts.completed + statusCounts.confirmed + statusCounts.noShow + statusCounts.cancelled;
+
+  const pieData = useMemo(
+    () => [
+      { value: statusCounts.completed, color: BAR_COLORS.completed, label: t('dashboard.legendCompleted') },
+      { value: statusCounts.confirmed, color: BAR_COLORS.confirmed, label: t('dashboard.legendConfirmed') },
+      { value: statusCounts.noShow, color: BAR_COLORS.noShow, label: t('dashboard.legendNoShow') },
+      { value: statusCounts.cancelled, color: BAR_COLORS.cancelled, label: t('dashboard.legendCancelled') },
+    ],
+    [statusCounts, t]
+  );
+
+  const handleSegmentPress = useCallback((index: number) => {
+    setFocusedIndex(prev => (prev === index ? -1 : index));
+  }, []);
+
+  const handleChartBackgroundPress = useCallback(() => {
+    setFocusedIndex(-1);
+  }, []);
+
+  // Dim unfocused segments to 40% opacity and pop the focused one outward
+  // along its angular midpoint (exploded-donut effect)
+  const pieChartData = useMemo<PieSegmentDatum[]>(
+    () =>
+      pieData.map((d, i) => {
+        const item: PieSegmentDatum = { value: d.value, color: d.color, onPress: () => handleSegmentPress(i) };
+        if (focusedIndex < 0) return item;
+        if (i !== focusedIndex) {
+          item.color = d.color + '66';
+          return item;
+        }
+        const before = pieData.slice(0, i).reduce((s, p) => s + p.value, 0);
+        const midFraction = totalCount > 0 ? (before + d.value / 2) / totalCount : 0;
+        const angle = 2 * Math.PI * midFraction;
+        const shift = 6;
+        item.shiftX = shift * Math.sin(angle);
+        item.shiftY = -shift * Math.cos(angle);
+        return item;
+      }),
+    [pieData, focusedIndex, totalCount, handleSegmentPress]
+  );
+
+  // Reset chart focus when the date range filter changes
+  useEffect(() => {
+    setFocusedIndex(-1);
+  }, [selectedRange]);
 
   const currentRevenue = useMemo(
     () =>
@@ -622,10 +551,6 @@ export const DashboardScreen: React.FC = () => {
   const avgRating = avgRatingQuery.data?.averageRating ?? Number(business?.averageRating ?? 0);
   const filledStars = Math.min(5, Math.round(avgRating));
   const isLoading = businessQuery.isLoading || appointmentsQuery.isLoading;
-
-  const Y_AXIS_W = 32;
-  const CHART_HPAD = 16;
-  const chartWidth = SCREEN_WIDTH - spacing.xl * 2 - CHART_HPAD * 2 - Y_AXIS_W;
 
   // --- Pending employee actions ---
 
@@ -904,41 +829,92 @@ export const DashboardScreen: React.FC = () => {
                 { color: colors.foreground, fontSize: typography.sizes.xxl },
               ]}
             >
-              {statusCounts.completed + statusCounts.confirmed + statusCounts.noShow + statusCounts.cancelled}
+              {totalCount}
             </Text>
           </View>
 
-          {/* Bar chart */}
-          {chartData.length > 0 ? (
-            <View style={{ paddingHorizontal: CHART_HPAD }}>
-              <BarChart
-                data={chartData as any}
-                width={chartWidth}
-                height={220}
-                maxValue={chartScale.max}
-                noOfSections={chartScale.sections}
-                yAxisLabelWidth={Y_AXIS_W}
-                yAxisThickness={0}
-                yAxisTextStyle={{
-                  fontFamily: 'Nunito_400Regular',
-                  fontSize: 10,
-                  color: colors.mutedForeground,
-                  textAlign: 'right',
-                }}
-                xAxisThickness={1}
-                xAxisColor={colors.border}
-                hideRules={false}
-                rulesType="solid"
-                rulesColor={colors.border + '66'}
-                backgroundColor="transparent"
-                isAnimated
-                animationDuration={500}
-                initialSpacing={8}
-                endSpacing={8}
-                showLine={false}
-                disableScroll
-              />
-            </View>
+          {/* Donut chart */}
+          {totalCount > 0 ? (
+            <Pressable onPress={handleChartBackgroundPress}>
+              <View style={styles.pieContainer}>
+                <PieChart
+                  data={pieChartData}
+                  donut
+                  radius={100}
+                  innerRadius={62}
+                  strokeWidth={2}
+                  strokeColor={colors.background}
+                  backgroundColor={colors.card}
+                  isAnimated
+                  animationDuration={600}
+                  // focusOnPress disabled: its native overlay redraws all
+                  // other slices in a single gray "peripheral" color.
+                  // Tap handling is done per-item via pieChartData's onPress
+                  // (handleSegmentPress), which drives focusedIndex below.
+                  focusOnPress={false}
+                  centerLabelComponent={() => {
+                    const focused = focusedIndex >= 0 ? pieData[focusedIndex] : null;
+                    return (
+                      <View style={styles.centerLabel}>
+                        {focused && (
+                          <View style={[styles.centerDot, { backgroundColor: focused.color }]} />
+                        )}
+                        <Text
+                          style={[
+                            typography.heading,
+                            { fontSize: 36, color: focused ? focused.color : colors.foreground },
+                          ]}
+                        >
+                          {focused ? focused.value : totalCount}
+                        </Text>
+                        <Text
+                          style={[
+                            typography.body,
+                            { fontSize: 11, color: colors.mutedForeground, marginTop: 2 },
+                          ]}
+                        >
+                          {focused ? focused.label : t('dashboard.appointmentsCenterLabel')}
+                        </Text>
+                      </View>
+                    );
+                  }}
+                />
+              </View>
+
+              {/* 2x2 legend grid */}
+              <View style={[styles.statGrid, { borderTopColor: colors.border }]}>
+                <View style={[styles.statVerticalDivider, { backgroundColor: colors.border }]} />
+                <View style={styles.statRow}>
+                  <StatBlock
+                    label={pieData[0].label}
+                    count={pieData[0].value}
+                    color={pieData[0].color}
+                    highlighted={focusedIndex === 0}
+                  />
+                  <StatBlock
+                    label={pieData[1].label}
+                    count={pieData[1].value}
+                    color={pieData[1].color}
+                    highlighted={focusedIndex === 1}
+                  />
+                </View>
+                <View style={[styles.statHDivider, { backgroundColor: colors.border }]} />
+                <View style={styles.statRow}>
+                  <StatBlock
+                    label={pieData[2].label}
+                    count={pieData[2].value}
+                    color={pieData[2].color}
+                    highlighted={focusedIndex === 2}
+                  />
+                  <StatBlock
+                    label={pieData[3].label}
+                    count={pieData[3].value}
+                    color={pieData[3].color}
+                    highlighted={focusedIndex === 3}
+                  />
+                </View>
+              </View>
+            </Pressable>
           ) : (
             <View style={styles.chartEmpty}>
               <Ionicons name="bar-chart-outline" size={40} color={colors.mutedForeground} />
@@ -952,36 +928,6 @@ export const DashboardScreen: React.FC = () => {
               </Text>
             </View>
           )}
-
-          {/* 2x2 Status stat grid */}
-          <View style={[styles.statGrid, { borderTopColor: colors.border }]}>
-            <View style={[styles.statVerticalDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.statRow}>
-              <StatBlock
-                label={t('dashboard.legendCompleted')}
-                count={statusCounts.completed}
-                color={BAR_COLORS.completed}
-              />
-              <StatBlock
-                label={t('dashboard.legendConfirmed')}
-                count={statusCounts.confirmed}
-                color={BAR_COLORS.confirmed}
-              />
-            </View>
-            <View style={[styles.statHDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.statRow}>
-              <StatBlock
-                label={t('dashboard.legendNoShow')}
-                count={statusCounts.noShow}
-                color={BAR_COLORS.noShow}
-              />
-              <StatBlock
-                label={t('dashboard.legendCancelled')}
-                count={statusCounts.cancelled}
-                color={BAR_COLORS.cancelled}
-              />
-            </View>
-          </View>
         </Card>
       )}
 
@@ -1155,6 +1101,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
     paddingBottom: spacing.md,
+  },
+  pieContainer: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    paddingVertical: spacing.lg,
+  },
+  centerLabel: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  centerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginBottom: 4,
   },
 
   // Rating card

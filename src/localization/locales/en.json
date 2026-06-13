@@ -136,6 +136,7 @@
     "noEmployee": "No pending employee requests",
     "specialization": "Specialization",
     "appointments": "Appointments",
+    "appointmentsCenterLabel": "Total",
     "noAppointmentsInPeriod": "No appointments in this period",
     "totalRevenue": "Total Revenue",
     "staffPerformance": "Staff Performance",

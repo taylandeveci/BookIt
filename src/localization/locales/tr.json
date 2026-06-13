@@ -136,6 +136,7 @@
     "noEmployee": "Bekleyen çalışan başvurusu yok",
     "specialization": "Uzmanlık",
     "appointments": "Randevular",
+    "appointmentsCenterLabel": "Toplam",
     "noAppointmentsInPeriod": "Bu dönemde randevu bulunmuyor",
     "totalRevenue": "Toplam Gelir",
     "staffPerformance": "Çalışan Performansı",

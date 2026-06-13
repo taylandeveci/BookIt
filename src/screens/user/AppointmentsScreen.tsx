@@ -196,6 +196,7 @@ export const AppointmentsScreen: React.FC = () => {
           apt.status === 'COMPLETED' ||
           apt.status === 'CANCELLED' ||
           apt.status === 'REJECTED' ||
+          apt.status === 'NO_SHOW' ||
           (apt.status === 'IN_PROGRESS' && isInProgressExpired(apt))
       );
     }
