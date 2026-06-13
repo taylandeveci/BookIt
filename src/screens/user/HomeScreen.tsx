@@ -51,8 +51,8 @@ function getInitials(name: string): string {
 }
 
 function formatDistance(meters: number): string {
-  if (meters < 1000) return `${Math.round(meters)} m`;
-  return `${(meters / 1000).toFixed(1)} km`;
+  if (meters < 1000) return `${Math.round(meters)} m uzakta`;
+  return `${(meters / 1000).toFixed(1)} km uzakta`;
 }
 
 function daysSince(isoDate: string): number {
@@ -60,6 +60,7 @@ function daysSince(isoDate: string): number {
 }
 
 const SKELETON_IDS = [0, 1, 2, 3];
+const NEARBY_RADIUS_METERS = 10000;
 
 export const HomeScreen: React.FC = () => {
   const { colors, shadows } = useTheme();
@@ -237,13 +238,16 @@ export const HomeScreen: React.FC = () => {
 
   // Derived sections
   const nearbyBusinesses = useMemo((): BusinessWithDistance[] => {
-    const withLocation = businesses.filter(
-      (b) => b.locationLat != null && b.locationLng != null
-    );
     if (!userCoords) {
-      return withLocation.slice(0, 6).map((b) => ({ ...b, _meters: -1 }));
+      // Location unavailable — fall back to all businesses sorted by rating
+      return businesses
+        .slice()
+        .sort((a, b) => (b.averageRating ?? 0) - (a.averageRating ?? 0))
+        .slice(0, 6)
+        .map((b) => ({ ...b, _meters: -1 }));
     }
-    return withLocation
+    return businesses
+      .filter((b) => b.locationLat != null && b.locationLng != null)
       .map((b) => ({
         ...b,
         _meters: calculateDistance(userCoords, {
@@ -251,9 +255,12 @@ export const HomeScreen: React.FC = () => {
           longitude: b.locationLng!,
         }),
       }))
+      .filter((b) => b._meters <= NEARBY_RADIUS_METERS)
       .sort((a, b) => a._meters - b._meters)
       .slice(0, 6);
   }, [businesses, userCoords]);
+
+  const nearbyLocationFallback = !userCoords;
 
   const topRatedBusinesses = useMemo((): BusinessWithDistance[] => {
     return businesses
@@ -409,6 +416,11 @@ export const HomeScreen: React.FC = () => {
             <Text style={[typography.headingSemiBold, styles.sectionTitle, { color: colors.foreground }]}>
               {t('home.nearbyTitle')}
             </Text>
+            {nearbyLocationFallback ? (
+              <Text style={[typography.body, styles.nearbyFallbackText, { color: colors.mutedForeground }]}>
+                Konum izni verilmedi — tüm işletmeler gösteriliyor
+              </Text>
+            ) : null}
           </View>
           {loadingBusinesses ? (
             <FlatList
@@ -420,6 +432,16 @@ export const HomeScreen: React.FC = () => {
               contentContainerStyle={styles.hList}
               scrollEnabled
             />
+          ) : nearbyBusinesses.length === 0 ? (
+            <View style={styles.nearbyEmpty}>
+              <Ionicons name="location-outline" size={40} color={colors.mutedForeground} />
+              <Text style={[typography.body, styles.nearbyEmptyText, { color: colors.mutedForeground, fontSize: typography.sizes.sm }]}>
+                Yakınınızda işletme bulunamadı
+              </Text>
+              <Text style={[typography.body, styles.nearbyEmptyText, { color: colors.mutedForeground, fontSize: typography.sizes.xs }]}>
+                Arama sayfasından tüm işletmeleri görebilirsiniz
+              </Text>
+            </View>
           ) : (
             <FlatList
               horizontal
@@ -630,6 +652,20 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: typography.sizes.lg,
+  },
+  nearbyFallbackText: {
+    fontSize: typography.sizes.xs,
+    marginTop: spacing.xs,
+  },
+  nearbyEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xl,
+  },
+  nearbyEmptyText: {
+    textAlign: 'center',
+    marginTop: spacing.sm,
   },
 
   hList: {

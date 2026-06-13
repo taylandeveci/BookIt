@@ -118,8 +118,8 @@ function trendPct(current: number, previous: number): number {
 // ---------------------------------------------------------------------------
 
 const BAR_COLORS = {
-  completed: '#4A5E6A',
-  confirmed: '#7BA7BC',
+  completed: '#4A7C59',
+  confirmed: '#4A5E6A',
   noShow: '#C18C5D',
   cancelled: '#A85448',
 };

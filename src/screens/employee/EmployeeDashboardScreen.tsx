@@ -103,8 +103,18 @@ export const EmployeeDashboardScreen: React.FC = () => {
 
   const today = toDateStr(new Date());
 
+  const PENDING_EXPIRY_WARNING_MS = 2 * 60 * 60 * 1000;
+
+  const isExpiringSoon = (apt: any): boolean => {
+    if (apt.status !== 'PENDING') return false;
+    if (!apt.startTime) return false;
+    const start = new Date(apt.startTime).getTime();
+    const now = Date.now();
+    return start > now && start - now < PENDING_EXPIRY_WARNING_MS;
+  };
+
   const pendingRequests = (allAppointments as any[])
-    .filter((a) => a.status === 'PENDING')
+    .filter((a) => a.status === 'PENDING' && new Date(a.startTime).getTime() >= Date.now())
     .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
   const todaySchedule = (allAppointments as any[])
@@ -256,6 +266,15 @@ export const EmployeeDashboardScreen: React.FC = () => {
                     </View>
                   </View>
 
+                  {isExpiringSoon(apt) && (
+                    <View style={styles.expiringSoonRow}>
+                      <Ionicons name="time-outline" size={12} color={colors.secondary} />
+                      <Text style={[typography.body, { fontSize: typography.sizes.xs, color: colors.secondary }]}>
+                        Onay süresi dolmak üzere
+                      </Text>
+                    </View>
+                  )}
+
                   {rowError ? (
                     <Text style={[typography.body, { color: colors.destructive, fontSize: 12, marginTop: spacing.xs }]}>
                       {rowError}
@@ -366,6 +385,11 @@ const styles = StyleSheet.create({
   requestActions: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  expiringSoonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   actionBtn: {
     flex: 1,

@@ -234,11 +234,27 @@ export const RequestsScreen: React.FC = () => {
     return expiry.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const PENDING_APPOINTMENT_WARNING_MS = 2 * 60 * 60 * 1000;
+
+  const isPendingAppointmentPastDue = (apt: AppointmentWithDetails): boolean => {
+    if (apt.status !== 'PENDING') return false;
+    if (!apt.startTime) return false;
+    return new Date(apt.startTime).getTime() < Date.now();
+  };
+
+  const isPendingExpiringSoon = (apt: AppointmentWithDetails): boolean => {
+    if (apt.status !== 'PENDING') return false;
+    if (!apt.startTime) return false;
+    const start = new Date(apt.startTime).getTime();
+    const now = Date.now();
+    return start > now && start - now < PENDING_APPOINTMENT_WARNING_MS;
+  };
+
   const filterAppointments = (): AppointmentWithDetails[] => {
     switch (tab) {
       case 'pending':
         return appointments.filter(
-          (apt) => apt.status === 'PENDING' && !isPendingExpired(apt)
+          (apt) => apt.status === 'PENDING' && !isPendingExpired(apt) && !isPendingAppointmentPastDue(apt)
         );
       case 'approved':
         return appointments.filter((apt) => apt.status === 'APPROVED');
@@ -321,6 +337,15 @@ export const RequestsScreen: React.FC = () => {
             </Text>
           ) : null;
         })()}
+
+        {isPendingExpiringSoon(item) && (
+          <View style={styles.expiringSoonRow}>
+            <Ionicons name="time-outline" size={12} color={colors.secondary} />
+            <Text style={[typography.body, { fontSize: typography.sizes.xs, color: colors.secondary }]}>
+              Onay süresi dolmak üzere
+            </Text>
+          </View>
+        )}
 
         <View style={styles.actions}>
           {item.status === 'PENDING' && (
@@ -597,6 +622,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
     marginBottom: 2,
+  },
+  expiringSoonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: spacing.xs,
   },
   metaText: {
     fontSize: typography.sizes.sm,

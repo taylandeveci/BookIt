@@ -182,11 +182,27 @@ export const AppointmentsScreen: React.FC = () => {
     return Date.now() > estimatedEnd;
   };
 
+  const PENDING_EXPIRY_WARNING_MS = 2 * 60 * 60 * 1000;
+
+  const isPendingPastDue = (apt: AppointmentWithDetails): boolean => {
+    if (apt.status !== 'PENDING') return false;
+    if (!apt.startTime) return false;
+    return new Date(apt.startTime).getTime() < Date.now();
+  };
+
+  const isPendingExpiringSoon = (apt: AppointmentWithDetails): boolean => {
+    if (apt.status !== 'PENDING') return false;
+    if (!apt.startTime) return false;
+    const start = new Date(apt.startTime).getTime();
+    const now = Date.now();
+    return start > now && start - now < PENDING_EXPIRY_WARNING_MS;
+  };
+
   const filterAppointments = (): AppointmentWithDetails[] => {
     if (tab === 'active') {
       return appointments.filter(
         (apt) =>
-          apt.status === 'PENDING' ||
+          (apt.status === 'PENDING' && !isPendingPastDue(apt)) ||
           apt.status === 'APPROVED' ||
           (apt.status === 'IN_PROGRESS' && !isInProgressExpired(apt))
       );
@@ -197,7 +213,8 @@ export const AppointmentsScreen: React.FC = () => {
           apt.status === 'CANCELLED' ||
           apt.status === 'REJECTED' ||
           apt.status === 'NO_SHOW' ||
-          (apt.status === 'IN_PROGRESS' && isInProgressExpired(apt))
+          (apt.status === 'IN_PROGRESS' && isInProgressExpired(apt)) ||
+          (apt.status === 'PENDING' && isPendingPastDue(apt))
       );
     }
   };
@@ -255,6 +272,15 @@ export const AppointmentsScreen: React.FC = () => {
       >
         {new Date(item.date || item.startTime || '').toLocaleDateString()} {t('time.at')} {item.timeSlot || (item.startTime ? new Date(item.startTime).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : 'TBD')}
       </Text>
+
+      {isPendingExpiringSoon(item) && (
+        <View style={styles.expiringSoonRow}>
+          <Ionicons name="time-outline" size={12} color={colors.secondary} />
+          <Text style={[typography.body, { fontSize: typography.sizes.xs, color: colors.secondary }]}>
+            Onay süresi dolmak üzere
+          </Text>
+        </View>
+      )}
 
       {/* Arrival confirmation prompt — shown within 15-min window for APPROVED/IN_PROGRESS */}
       {(item.status === 'APPROVED' || item.status === 'IN_PROGRESS') &&
@@ -508,6 +534,12 @@ const styles = StyleSheet.create({
   disputedNote: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    gap: 4,
+    marginTop: spacing.xs,
+  },
+  expiringSoonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 4,
     marginTop: spacing.xs,
   },

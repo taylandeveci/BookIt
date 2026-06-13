@@ -17,7 +17,7 @@ export const lightTheme = {
   input: '#FFFFFF',
   inputBorder: '#DED8CF',
   placeholder: '#B0AFA5',
-  success: '#5D7052',
+  success: '#4A7C59',
   warning: '#C18C5D',
   info: '#6B8E9F',
 };
@@ -41,7 +41,7 @@ export const darkTheme = {
   input: '#2A2A22',
   inputBorder: '#3D3D35',
   placeholder: '#6B6B5F',
-  success: '#7A9570',
+  success: '#4A7C59',
   warning: '#D4A574',
   info: '#8BAAB9',
 };
