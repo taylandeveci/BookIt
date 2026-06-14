@@ -548,7 +548,7 @@ export const DashboardScreen: React.FC = () => {
 
   const business = businessQuery.data;
   const pendingEmployees = (pendingQuery.data ?? []) as PendingEmployee[];
-  const avgRating = avgRatingQuery.data?.averageRating ?? Number(business?.averageRating ?? 0);
+  const avgRating = avgRatingQuery.data?.averageRating ?? 0;
   const filledStars = Math.min(5, Math.round(avgRating));
   const isLoading = businessQuery.isLoading || appointmentsQuery.isLoading;
 
@@ -792,7 +792,7 @@ export const DashboardScreen: React.FC = () => {
                     { color: colors.mutedForeground, fontSize: typography.sizes.xs, marginTop: spacing.xs, textAlign: 'center' },
                   ]}
                 >
-                  {t('businessReviews.based', { count: business?.reviewCount ?? 0 })}
+                  {t('businessReviews.based', { count: avgRatingQuery.data?.reviewCount ?? 0 })}
                 </Text>
               </Card>
             </Animated.View>
