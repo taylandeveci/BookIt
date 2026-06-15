@@ -44,6 +44,13 @@ export const employeeService = {
     return apiClient.post<any>(`/employee/services/${serviceId}`, overrides ?? {});
   },
 
+  async updateService(
+    serviceId: string,
+    overrides?: { durationOverride?: number; priceOverride?: number; notes?: string }
+  ) {
+    return apiClient.patch<any>(`/employee/services/${serviceId}`, overrides ?? {});
+  },
+
   async removeService(serviceId: string) {
     return apiClient.delete<any>(`/employee/services/${serviceId}`);
   },

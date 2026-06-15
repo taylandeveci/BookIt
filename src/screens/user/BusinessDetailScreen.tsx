@@ -143,6 +143,19 @@ export const BusinessDetailScreen: React.FC = () => {
     staleTime: 60000,
   });
 
+  // Effective (employee-override-aware) prices/durations for the selected employee
+  const { data: employeeServices = [] } = useQuery({
+    queryKey: [...queryKeys.businesses.services(businessId), selectedEmployee],
+    queryFn: async () => {
+      const data = await businessService.getServices(businessId, selectedEmployee!);
+      return Array.isArray(data) ? data as Service[] : [];
+    },
+    enabled: !!selectedEmployee,
+    staleTime: 30000,
+  });
+
+  const displayedServices = employeeServices.length > 0 ? employeeServices : services;
+
   const { data: reviews = [], isLoading: reviewsLoading } = useQuery({
     queryKey: queryKeys.reviews.forBusiness(businessId),
     queryFn: async () => {
@@ -471,7 +484,7 @@ export const BusinessDetailScreen: React.FC = () => {
                   {t('businessDetail.step2Service')}
                 </Text>
                 <View style={styles.servicesList}>
-                  {(Array.isArray(services) ? services : []).map((svc) => (
+                  {(Array.isArray(displayedServices) ? displayedServices : []).map((svc) => (
                     <TouchableOpacity
                       key={svc.id}
                       onPress={() => {

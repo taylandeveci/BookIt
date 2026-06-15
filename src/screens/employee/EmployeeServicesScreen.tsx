@@ -39,6 +39,9 @@ interface MyService {
   id: string;
   serviceId: string;
   service?: BusinessService;
+  durationOverride?: number | null;
+  priceOverride?: number | null;
+  notes?: string | null;
 }
 
 export const EmployeeServicesScreen: React.FC = () => {
@@ -83,6 +86,9 @@ export const EmployeeServicesScreen: React.FC = () => {
             id: es.id,
             serviceId: es.serviceId ?? es.service?.id,
             service: es.service ?? undefined,
+            durationOverride: es.durationOverride ?? null,
+            priceOverride: es.priceOverride ?? null,
+            notes: es.notes ?? null,
           }))
         );
       } catch {
@@ -126,9 +132,9 @@ export const EmployeeServicesScreen: React.FC = () => {
     if (!svc) return;
     setSelectedService(svc);
     setEditingMyService(myService);
-    setFormDuration('');
-    setFormPrice('');
-    setFormNotes('');
+    setFormDuration(myService.durationOverride != null ? String(myService.durationOverride) : '');
+    setFormPrice(myService.priceOverride != null ? String(myService.priceOverride) : '');
+    setFormNotes(myService.notes ?? '');
     setStep('form');
   };
 
@@ -150,7 +156,13 @@ export const EmployeeServicesScreen: React.FC = () => {
 
     setSaving(true);
     try {
-      if (!isAlreadyAdded) {
+      if (editingMyService) {
+        await employeeService.updateService(selectedService.id, {
+          durationOverride: parsedDuration,
+          priceOverride: parsedPrice,
+          notes: parsedNotes,
+        });
+      } else if (!isAlreadyAdded) {
         await employeeService.addService(selectedService.id, {
           durationOverride: parsedDuration,
           priceOverride: parsedPrice,
@@ -290,6 +302,8 @@ export const EmployeeServicesScreen: React.FC = () => {
         renderItem={({ item }) => {
           const svc = getServiceDetails(item);
           if (!svc) return null;
+          const effectiveDuration = item.durationOverride ?? svc.durationMin;
+          const effectivePrice = item.priceOverride ?? svc.price;
           return (
             <TouchableOpacity
               style={[styles.serviceRow, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -301,9 +315,9 @@ export const EmployeeServicesScreen: React.FC = () => {
               <View style={styles.serviceInfo}>
                 <Text style={[typography.bodySemiBold, { color: colors.foreground }]}>{svc.name}</Text>
                 <Text style={[typography.body, { color: colors.mutedForeground, fontSize: 13, marginTop: 2 }]}>
-                  {svc.durationMin} {t('common.min')}{' '}
+                  {effectiveDuration} {t('common.min')}{' '}
                   <Text style={{ color: colors.secondary }}>
-                    · {formatCurrency(Number(svc.price))}
+                    · {formatCurrency(Number(effectivePrice))}
                   </Text>
                 </Text>
                 {svc.description ? (

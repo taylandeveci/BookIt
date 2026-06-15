@@ -26,8 +26,9 @@ export const businessService = {
     return await apiClient.get<Employee[]>(`/businesses/${businessId}/employees`);
   },
 
-  async getServices(businessId: string): Promise<Service[]> {
-    return await apiClient.get<Service[]>(`/businesses/${businessId}/services`);
+  async getServices(businessId: string, employeeId?: string): Promise<Service[]> {
+    const query = employeeId ? `?employeeId=${employeeId}` : '';
+    return await apiClient.get<Service[]>(`/businesses/${businessId}/services${query}`);
   },
 
   async getAvailableTimeSlots(
