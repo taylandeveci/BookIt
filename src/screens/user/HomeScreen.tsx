@@ -8,7 +8,6 @@ import {
   FlatList,
   Modal,
   RefreshControl,
-  Image,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
@@ -22,7 +21,7 @@ import { businessService } from '../../services/businessService';
 import { appointmentService } from '../../services/appointmentService';
 import { Business, Appointment } from '../../types';
 import { useTheme } from '../../theme/useTheme';
-import { RatingStars, Toast } from '../../components';
+import { RatingStars, Toast, ImageWithFallback } from '../../components';
 import { spacing, typography, borderRadius } from '../../theme/theme';
 import { useAuthStore } from '../../store/authStore';
 import { useNotificationStore, NotificationType } from '../../store/notificationStore';
@@ -61,6 +60,58 @@ function daysSince(isoDate: string): number {
 
 const SKELETON_IDS = [0, 1, 2, 3];
 const NEARBY_RADIUS_METERS = 10000;
+
+const HorizontalBusinessCard = React.memo<{
+  item: BusinessWithDistance;
+  showRating: boolean;
+  onPress: (businessId: string) => void;
+}>(({ item, showRating, onPress }) => {
+  const { colors, shadows } = useTheme();
+
+  return (
+    <TouchableOpacity
+      style={[styles.hCard, { backgroundColor: colors.card, borderRadius: borderRadius.lg }, shadows.sm]}
+      onPress={() => onPress(item.id)}
+      activeOpacity={0.8}
+    >
+      <View style={[styles.hCardImage, { backgroundColor: colors.muted, borderRadius: borderRadius.md, overflow: 'hidden' }]}>
+        <Ionicons name="storefront-outline" size={32} color={colors.mutedForeground} />
+        {item.media?.[0]?.url ? (
+          <ImageWithFallback uri={item.media[0].url} style={StyleSheet.absoluteFill} resizeMode="cover" iconSize={32} />
+        ) : null}
+      </View>
+      <View style={styles.hCardBody}>
+        <Text
+          style={[typography.bodySemiBold, styles.hCardName, { color: colors.foreground }]}
+          numberOfLines={2}
+        >
+          {item.name}
+        </Text>
+        {item.city ? (
+          <Text
+            style={[typography.body, styles.hCardSub, { color: colors.mutedForeground }]}
+            numberOfLines={1}
+          >
+            {item.city}
+          </Text>
+        ) : null}
+        {showRating && (item.averageRating ?? 0) > 0 ? (
+          <View style={styles.ratingRow}>
+            <RatingStars rating={item.averageRating ?? 0} size={12} />
+            <Text style={[typography.body, styles.hCardSub, { color: colors.mutedForeground, marginLeft: spacing.xs }]}>
+              ({item.reviewCount ?? 0})
+            </Text>
+          </View>
+        ) : null}
+        {!showRating && item._meters >= 0 ? (
+          <Text style={[typography.body, styles.hCardSub, { color: colors.primary }]}>
+            {formatDistance(item._meters)}
+          </Text>
+        ) : null}
+      </View>
+    </TouchableOpacity>
+  );
+});
 
 export const HomeScreen: React.FC = () => {
   const { colors, shadows } = useTheme();
@@ -304,55 +355,26 @@ export const HomeScreen: React.FC = () => {
   const firstName = user?.name?.split(' ')[0] ?? '';
 
   // Card renderers
-  const renderHorizontalCard = (item: BusinessWithDistance, showRating: boolean) => (
-    <TouchableOpacity
-      style={[styles.hCard, { backgroundColor: colors.card, borderRadius: borderRadius.lg }, shadows.sm]}
-      onPress={() => navigation.navigate('BusinessDetail', { businessId: item.id })}
-      activeOpacity={0.8}
-    >
-      <View style={[styles.hCardImage, { backgroundColor: colors.muted, borderRadius: borderRadius.md, overflow: 'hidden' }]}>
-        <Ionicons name="storefront-outline" size={32} color={colors.mutedForeground} />
-        {item.media?.[0]?.url ? (
-          <Image source={{ uri: item.media[0].url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-        ) : null}
-      </View>
-      <View style={styles.hCardBody}>
-        <Text
-          style={[typography.bodySemiBold, styles.hCardName, { color: colors.foreground }]}
-          numberOfLines={2}
-        >
-          {item.name}
-        </Text>
-        {item.city ? (
-          <Text
-            style={[typography.body, styles.hCardSub, { color: colors.mutedForeground }]}
-            numberOfLines={1}
-          >
-            {item.city}
-          </Text>
-        ) : null}
-        {showRating && (item.averageRating ?? 0) > 0 ? (
-          <View style={styles.ratingRow}>
-            <RatingStars rating={item.averageRating ?? 0} size={12} />
-            <Text style={[typography.body, styles.hCardSub, { color: colors.mutedForeground, marginLeft: spacing.xs }]}>
-              ({item.reviewCount ?? 0})
-            </Text>
-          </View>
-        ) : null}
-        {!showRating && item._meters >= 0 ? (
-          <Text style={[typography.body, styles.hCardSub, { color: colors.primary }]}>
-            {formatDistance(item._meters)}
-          </Text>
-        ) : null}
-      </View>
-    </TouchableOpacity>
+  const handleBusinessPress = useCallback(
+    (businessId: string) => {
+      navigation.navigate('BusinessDetail', { businessId });
+    },
+    [navigation]
   );
 
-  const renderNearbyCard = ({ item }: { item: BusinessWithDistance }) =>
-    renderHorizontalCard(item, false);
+  const renderNearbyCard = useCallback(
+    ({ item }: { item: BusinessWithDistance }) => (
+      <HorizontalBusinessCard item={item} showRating={false} onPress={handleBusinessPress} />
+    ),
+    [handleBusinessPress]
+  );
 
-  const renderTopRatedCard = ({ item }: { item: BusinessWithDistance }) =>
-    renderHorizontalCard(item, true);
+  const renderTopRatedCard = useCallback(
+    ({ item }: { item: BusinessWithDistance }) => (
+      <HorizontalBusinessCard item={item} showRating={true} onPress={handleBusinessPress} />
+    ),
+    [handleBusinessPress]
+  );
 
   const renderSkeletonCard = ({ item: _item }: { item: number }) => (
     <View style={[styles.hCard, { backgroundColor: colors.card, borderRadius: borderRadius.lg }]}>
@@ -431,6 +453,9 @@ export const HomeScreen: React.FC = () => {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.hList}
               scrollEnabled
+              maxToRenderPerBatch={10}
+              windowSize={5}
+              initialNumToRender={6}
             />
           ) : nearbyBusinesses.length === 0 ? (
             <View style={styles.nearbyEmpty}>
@@ -451,6 +476,9 @@ export const HomeScreen: React.FC = () => {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.hList}
               scrollEnabled
+              maxToRenderPerBatch={10}
+              windowSize={5}
+              initialNumToRender={6}
             />
           )}
         </View>
@@ -472,6 +500,9 @@ export const HomeScreen: React.FC = () => {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.hList}
                 scrollEnabled
+                maxToRenderPerBatch={10}
+                windowSize={5}
+                initialNumToRender={6}
               />
             ) : (
               <FlatList
@@ -482,6 +513,9 @@ export const HomeScreen: React.FC = () => {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.hList}
                 scrollEnabled
+                maxToRenderPerBatch={10}
+                windowSize={5}
+                initialNumToRender={6}
               />
             )}
           </View>

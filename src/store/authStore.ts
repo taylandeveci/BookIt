@@ -43,13 +43,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         throw error;
       }
 
-      // Block rejected employees from logging in
-      if (response.user.role === 'EMPLOYEE' && response.user.employee?.status === 'REJECTED') {
-        const error = new Error('Employee account rejected') as any;
-        error.code = 'EMPLOYEE_REJECTED';
-        throw error;
-      }
-      
       // Role matches or no validation needed - store tokens and set user
       await Promise.all([
         SecureStore.setItemAsync('accessToken', response.accessToken),

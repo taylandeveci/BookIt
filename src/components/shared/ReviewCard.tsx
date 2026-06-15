@@ -12,7 +12,7 @@ interface ReviewCardProps {
   style?: object;
 }
 
-export const ReviewCard: React.FC<ReviewCardProps> = ({ review, style }) => {
+export const ReviewCard: React.FC<ReviewCardProps> = React.memo(({ review, style }) => {
   const { colors } = useTheme();
   const { t } = useTranslation();
 
@@ -43,4 +43,4 @@ export const ReviewCard: React.FC<ReviewCardProps> = ({ review, style }) => {
       ) : null}
     </Card>
   );
-};
+});

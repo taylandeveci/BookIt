@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -57,6 +57,8 @@ export const OwnerReviewsScreen: React.FC = () => {
 
   const loading = ratingLoading || reviewsLoading;
 
+  const renderItem = useCallback(({ item }: { item: typeof reviews[number] }) => <ReviewCard review={item} />, []);
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       {/* Header */}
@@ -80,6 +82,8 @@ export const OwnerReviewsScreen: React.FC = () => {
           keyExtractor={(item) => item.id}
           removeClippedSubviews
           maxToRenderPerBatch={10}
+          windowSize={5}
+          initialNumToRender={6}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
           ListHeaderComponent={
@@ -101,7 +105,7 @@ export const OwnerReviewsScreen: React.FC = () => {
               </Text>
             </View>
           }
-          renderItem={({ item }) => <ReviewCard review={item} />}
+          renderItem={renderItem}
         />
       )}
     </SafeAreaView>

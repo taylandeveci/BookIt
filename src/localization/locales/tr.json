@@ -84,7 +84,6 @@
     "ownerDemo": "İşletme Demo",
     "roleMismatchCustomer": "Bu hesap İşletme Sahibi hesabı. Lütfen İşletme Sahibi girişine geçin.",
     "roleMismatchOwner": "Bu hesap Müşteri hesabı. Lütfen Müşteri girişine geçin.",
-    "employeeRejected": "Hesabınız reddedildi. Lütfen işletme sahibiyle iletişime geçin.",
     "joinCodeLength": "Kod 6 haneli olmalıdır.",
     "confirmPasswordRequired": "Lütfen şifrenizi onaylayın.",
     "businessNameRequired": "İşletme sahibi için işletme adı zorunludur.",
@@ -507,9 +506,25 @@
   },
   "employeePending": {
     "title": "Onay Bekleniyor",
-    "description": "Kaydınız alındı. İşletme sahibinin talebinizi onaylaması bekleniyor.",
+    "description": "Başvurunuz işletme sahibi tarafından inceleniyor.",
     "afterApproval": "Onaylandıktan sonra tekrar giriş yaparak çalışan paneline erişebilirsiniz.",
     "back": "Geri Dön"
+  },
+  "employeeRejected": {
+    "title": "Başvurunuz Reddedildi",
+    "description": "İşletme başvurunuz reddedildi. Başka bir işletmeye katılmak için katılım kodunu girin.",
+    "joinCodePlaceholder": "Katılım kodu girin, örn. CRAFT1",
+    "submit": "Yeni İşletmeye Katıl",
+    "success": "Başvurunuz iletildi. Onay bekleniyor.",
+    "back": "Çıkış Yap"
+  },
+  "employeeJoin": {
+    "title": "İşletmeye Katıl",
+    "subtitle": "Çalışmak istediğiniz işletmenin katılım kodunu girin",
+    "joinCodePlaceholder": "Katılım kodu girin, örn. CRAFT1",
+    "submit": "Başvur",
+    "success": "Başvurunuz iletildi. Onay bekleniyor.",
+    "back": "Çıkış Yap"
   },
   "employeeDashboard": {
     "greeting": "Merhaba",
@@ -568,8 +583,8 @@
   "employeeSchedule": {
     "title": "Çalışma Saatleri",
     "save": "Programı Kaydet",
-    "saveSuccess": "Program kaydedildi",
-    "saveError": "Program kaydedilemedi",
+    "saveSuccess": "Çalışma saatleri kaydedildi",
+    "saveError": "Çalışma saatleri kaydedilemedi",
     "dayOff": "Kapalı",
     "startTime": "Başlangıç",
     "endTime": "Bitiş",
@@ -581,7 +596,10 @@
     "saturday": "Cumartesi",
     "sunday": "Pazar",
     "cancelBtn": "İptal",
-    "doneBtn": "Tamam"
+    "doneBtn": "Tamam",
+    "unsavedTitle": "Kaydedilmemiş Değişiklikler",
+    "unsavedMessage": "Çalışma saatleriniz kaydedilmedi. Çıkmak istiyor musunuz?",
+    "discardExit": "Çık"
   },
   "employeeProfile": {
     "role": "Çalışan",

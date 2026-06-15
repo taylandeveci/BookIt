@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,7 @@ import { reviewService } from '../../services/reviewService';
 import { Card, EmptyState, Toast } from '../../components';
 import { formatCurrency } from '../../lib/formatCurrency';
 import { useNotificationStore } from '../../store/notificationStore';
+import { useBackendNotificationSync } from '../../hooks/useBackendNotificationSync';
 import { spacing, typography, borderRadius } from '../../theme/theme';
 import { PendingEmployee } from '../../types';
 
@@ -370,11 +371,13 @@ export const DashboardScreen: React.FC = () => {
   const businessQuery = useQuery({
     queryKey: queryKeys.owner.business,
     queryFn: () => ownerService.getBusiness(),
+    staleTime: 60000,
   });
 
   const appointmentsQuery = useQuery({
     queryKey: queryKeys.bookings.ownerAll,
     queryFn: () => ownerService.getOwnerAppointments(),
+    staleTime: 30000,
   });
 
   const employeesQuery = useQuery({
@@ -383,11 +386,13 @@ export const DashboardScreen: React.FC = () => {
       : ['employees', '__none__'],
     queryFn: () => businessService.getEmployees(businessQuery.data!.id),
     enabled: !!businessQuery.data?.id,
+    staleTime: 60000,
   });
 
   const pendingQuery = useQuery({
     queryKey: queryKeys.employees.pending,
     queryFn: () => ownerService.getPendingEmployees().catch(() => [] as PendingEmployee[]),
+    staleTime: 30000,
   });
 
   const reviewsQuery = useQuery({
@@ -396,6 +401,7 @@ export const DashboardScreen: React.FC = () => {
       : ['reviews', '__none__'],
     queryFn: () => reviewService.getReviews(businessQuery.data!.id),
     enabled: !!businessQuery.data?.id,
+    staleTime: 30000,
   });
 
   const avgRatingQuery = useQuery({
@@ -410,6 +416,7 @@ export const DashboardScreen: React.FC = () => {
       };
     },
     enabled: !!businessQuery.data?.id,
+    staleTime: 60000,
   });
 
   const checkUnseenReviews = useCallback(async () => {
@@ -424,17 +431,34 @@ export const DashboardScreen: React.FC = () => {
   }, [businessQuery.data?.id, reviewsQuery.data]);
 
   // Invalidate on tab focus and recheck unseen count
+  const isRefetchingRef = useRef(false);
+
   useFocusEffect(
     useCallback(() => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.owner.business });
-      queryClient.invalidateQueries({ queryKey: queryKeys.bookings.ownerAll });
-      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      if (isRefetchingRef.current) return;
+      isRefetchingRef.current = true;
+
+      const invalidations = [
+        queryClient.invalidateQueries({ queryKey: queryKeys.owner.business }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.bookings.ownerAll }),
+        queryClient.invalidateQueries({ queryKey: ['employees'] }),
+      ];
       if (businessQuery.data?.id) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.businesses.averageRating(businessQuery.data.id) });
+        invalidations.push(
+          queryClient.invalidateQueries({ queryKey: queryKeys.businesses.averageRating(businessQuery.data.id) })
+        );
       }
-      checkUnseenReviews();
+
+      Promise.all(invalidations)
+        .then(() => checkUnseenReviews())
+        .finally(() => {
+          isRefetchingRef.current = false;
+        });
     }, [queryClient, businessQuery.data?.id, checkUnseenReviews])
   );
+
+  // Cross-device: pick up new booking requests created from another device.
+  useBackendNotificationSync([queryKeys.bookings.ownerAll]);
 
   // --- Derived data ---
 

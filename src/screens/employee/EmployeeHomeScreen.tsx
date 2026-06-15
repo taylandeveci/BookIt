@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -32,11 +32,18 @@ export const EmployeeHomeScreen: React.FC = () => {
   const { data: appointments = [], isLoading: loading } = useQuery({
     queryKey: queryKeys.bookings.employeeAll,
     queryFn: () => employeeService.getAppointments(),
+    staleTime: 30000,
   });
+
+  const isRefetchingRef = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.bookings.employeeAll });
+      if (isRefetchingRef.current) return;
+      isRefetchingRef.current = true;
+      queryClient.invalidateQueries({ queryKey: queryKeys.bookings.employeeAll }).finally(() => {
+        isRefetchingRef.current = false;
+      });
     }, [queryClient])
   );
 
@@ -208,6 +215,8 @@ export const EmployeeHomeScreen: React.FC = () => {
         renderItem={renderItem}
         removeClippedSubviews
         maxToRenderPerBatch={10}
+        windowSize={5}
+        initialNumToRender={6}
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={false} onRefresh={() => queryClient.invalidateQueries({ queryKey: queryKeys.bookings.employeeAll })} />}
         ListEmptyComponent={

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -63,6 +63,7 @@ export const EmployeesScreen: React.FC = () => {
     queryKey: queryKeys.owner.business,
     queryFn: () => ownerService.getBusiness(),
     enabled: !!user,
+    staleTime: 60000,
   });
 
   const businessId = business?.id;
@@ -71,16 +72,28 @@ export const EmployeesScreen: React.FC = () => {
     queryKey: businessId ? queryKeys.employees.forBusiness(businessId) : ['employees', '__none__'],
     queryFn: () => businessService.getEmployees(businessId!),
     enabled: !!businessId,
+    staleTime: 60000,
   });
 
   const loading = businessLoading || employeesLoading;
 
+  const isRefetchingRef = useRef(false);
+
   useFocusEffect(
     React.useCallback(() => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.owner.business });
+      if (isRefetchingRef.current) return;
+      isRefetchingRef.current = true;
+
+      const invalidations = [queryClient.invalidateQueries({ queryKey: queryKeys.owner.business })];
       if (businessId) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.employees.forBusiness(businessId) });
+        invalidations.push(
+          queryClient.invalidateQueries({ queryKey: queryKeys.employees.forBusiness(businessId) })
+        );
       }
+
+      Promise.all(invalidations).finally(() => {
+        isRefetchingRef.current = false;
+      });
     }, [queryClient, businessId])
   );
 
@@ -246,6 +259,8 @@ export const EmployeesScreen: React.FC = () => {
         keyExtractor={(item) => item.id}
         removeClippedSubviews
         maxToRenderPerBatch={10}
+        windowSize={5}
+        initialNumToRender={6}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,20 +7,21 @@ import {
   Switch,
   TouchableOpacity,
   Alert,
-  Image,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useQueryClient } from '@tanstack/react-query';
 import { RootStackParamList } from '../../navigation/RootNavigator';
+import { queryKeys } from '../../lib/queryKeys';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
 import { useTheme } from '../../theme/useTheme';
 import { businessService } from '../../services/businessService';
 import { employeeService } from '../../services/employeeService';
-import { Button, Card, Input, Toast } from '../../components';
+import { Button, Card, Input, Toast, ImageWithFallback } from '../../components';
 import { spacing, typography, borderRadius } from '../../theme/theme';
 import { useTranslation } from 'react-i18next';
 import { setAppLanguage, getCurrentLanguage } from '../../localization/i18n';
@@ -31,6 +32,7 @@ export const EmployeeProfileScreen: React.FC = () => {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const logout = useAuthStore((state) => state.logout);
@@ -61,10 +63,16 @@ export const EmployeeProfileScreen: React.FC = () => {
   const hasBusiness = !!user?.employee?.businessId;
   const isPending = user?.employee?.status === 'PENDING';
 
+  const isRefetchingRef = useRef(false);
+
   useFocusEffect(
     useCallback(() => {
       if (user?.employee?.businessId) {
-        loadBusiness(user.employee.businessId);
+        if (isRefetchingRef.current) return;
+        isRefetchingRef.current = true;
+        loadBusiness(user.employee.businessId).finally(() => {
+          isRefetchingRef.current = false;
+        });
       } else {
         setBusiness(null);
       }
@@ -116,12 +124,16 @@ export const EmployeeProfileScreen: React.FC = () => {
     setLeaveLoading(true);
     setLeaveError(null);
     try {
+      const previousBusinessId = user?.employee?.businessId;
       await employeeService.leaveBusiness();
-      // Update local user state — clear employee assignment
-      if (user) {
-        setUser({ ...user, employee: undefined });
+      // Update local user state — employee becomes unassigned, account stays intact
+      if (user?.employee) {
+        setUser({ ...user, employee: { ...user.employee, status: 'UNASSIGNED', businessId: null } });
       }
       setBusiness(null);
+      if (previousBusinessId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.employees.forBusiness(previousBusinessId) });
+      }
     } catch (e: any) {
       setLeaveError(e.message || t('employeeProfile.leaveError'));
     } finally {
@@ -171,7 +183,7 @@ export const EmployeeProfileScreen: React.FC = () => {
         <View style={styles.header}>
           <View style={styles.avatarWrap}>
             {user.avatar ? (
-              <Image source={{ uri: user.avatar }} style={styles.avatar} />
+              <ImageWithFallback uri={user.avatar} style={styles.avatar} iconSize={40} />
             ) : (
               <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.muted }]}>
                 <Ionicons name="person" size={40} color={colors.mutedForeground} />

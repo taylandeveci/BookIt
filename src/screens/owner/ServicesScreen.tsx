@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -67,14 +67,21 @@ export const ServicesScreen: React.FC = () => {
       return { business: biz as Business, services: Array.isArray(svcs) ? svcs : [] as Service[] };
     },
     enabled: !!user,
+    staleTime: 60000,
   });
 
   const business = ownerData?.business ?? null;
   const services = ownerData?.services ?? [];
 
+  const isRefetchingRef = useRef(false);
+
   useFocusEffect(
     React.useCallback(() => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.owner.services });
+      if (isRefetchingRef.current) return;
+      isRefetchingRef.current = true;
+      queryClient.invalidateQueries({ queryKey: queryKeys.owner.services }).finally(() => {
+        isRefetchingRef.current = false;
+      });
     }, [queryClient])
   );
 
@@ -295,6 +302,8 @@ export const ServicesScreen: React.FC = () => {
           keyExtractor={(item) => item.id}
           removeClippedSubviews
           maxToRenderPerBatch={10}
+          windowSize={5}
+          initialNumToRender={6}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
         />

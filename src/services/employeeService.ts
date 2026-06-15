@@ -60,7 +60,7 @@ export const employeeService = {
     return apiClient.get<any[]>('/employee/schedule');
   },
 
-  async updateSchedule(entries: { dayOfWeek: number; startTime: string; endTime: string }[]) {
+  async updateSchedule(entries: { dayOfWeek: number; startTime: string; endTime: string; isWorking: boolean }[]) {
     return apiClient.put<any[]>('/employee/schedule', entries);
   },
 };

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -95,7 +95,17 @@ export const EmployeeServicesScreen: React.FC = () => {
     [businessId]
   );
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  const isRefetchingRef = useRef(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isRefetchingRef.current) return;
+      isRefetchingRef.current = true;
+      load().finally(() => {
+        isRefetchingRef.current = false;
+      });
+    }, [load])
+  );
 
   const getServiceDetails = (myService: MyService): BusinessService | undefined => {
     return myService.service ?? allServices.find((s) => s.id === myService.serviceId);
@@ -246,6 +256,8 @@ export const EmployeeServicesScreen: React.FC = () => {
         keyExtractor={(item) => item.id}
         removeClippedSubviews
         maxToRenderPerBatch={10}
+        windowSize={5}
+        initialNumToRender={6}
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={colors.primary} />}
         ListHeaderComponent={
@@ -364,6 +376,8 @@ export const EmployeeServicesScreen: React.FC = () => {
                   keyExtractor={(s) => s.id}
                   removeClippedSubviews
                   maxToRenderPerBatch={10}
+                  windowSize={5}
+                  initialNumToRender={6}
                   style={styles.pickList}
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
@@ -418,6 +432,8 @@ export const EmployeeServicesScreen: React.FC = () => {
                 keyExtractor={() => 'empty'}
                 removeClippedSubviews
                 maxToRenderPerBatch={10}
+                windowSize={5}
+                initialNumToRender={6}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
                 ListHeaderComponent={

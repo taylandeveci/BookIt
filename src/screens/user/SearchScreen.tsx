@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
   Linking,
   Platform,
-  Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker } from 'react-native-maps';
@@ -32,6 +31,7 @@ import {
   Toast,
   Badge,
   Button,
+  ImageWithFallback,
 } from '../../components';
 import { spacing, typography, borderRadius } from '../../theme/theme';
 import { useBusinessLocation } from '../../hooks/useBusinessLocation';
@@ -222,7 +222,12 @@ export const SearchScreen: React.FC = () => {
       <View style={[styles.businessImage, { backgroundColor: colors.muted, borderRadius: borderRadius.md, overflow: 'hidden' }]}>
         <Ionicons name="image" size={32} color={colors.mutedForeground} />
         {item.media?.[0]?.url ? (
-          <Image source={{ uri: item.media[0].url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          <ImageWithFallback
+            uri={item.media[0].url}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+            iconSize={32}
+          />
         ) : null}
       </View>
 
@@ -484,6 +489,8 @@ export const SearchScreen: React.FC = () => {
           keyExtractor={(item) => item.id}
           removeClippedSubviews
           maxToRenderPerBatch={10}
+          windowSize={5}
+          initialNumToRender={6}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
         />

@@ -157,6 +157,8 @@ export const NotificationsScreen: React.FC = () => {
         renderItem={renderItem}
         removeClippedSubviews
         maxToRenderPerBatch={10}
+        windowSize={5}
+        initialNumToRender={6}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.empty}>

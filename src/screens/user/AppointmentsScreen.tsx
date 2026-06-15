@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -55,11 +55,18 @@ export const AppointmentsScreen: React.FC = () => {
       return Array.isArray(data) ? (data as AppointmentWithDetails[]) : [];
     },
     enabled: !!user,
+    staleTime: 30000,
   });
 
+  const isRefetchingRef = useRef(false);
   useFocusEffect(
     useCallback(() => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.bookings.customerAll });
+      if (isRefetchingRef.current) return;
+      isRefetchingRef.current = true;
+      queryClient.invalidateQueries({ queryKey: queryKeys.bookings.customerAll })
+        .finally(() => {
+          isRefetchingRef.current = false;
+        });
     }, [queryClient])
   );
 
@@ -451,6 +458,8 @@ export const AppointmentsScreen: React.FC = () => {
           keyExtractor={(item) => item.id}
           removeClippedSubviews
           maxToRenderPerBatch={10}
+          windowSize={5}
+          initialNumToRender={6}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
         />

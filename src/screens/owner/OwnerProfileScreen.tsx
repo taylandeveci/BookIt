@@ -8,7 +8,6 @@ import {
   Switch,
   ActivityIndicator,
   TouchableOpacity,
-  Image,
   Modal,
   Dimensions,
 } from 'react-native';
@@ -25,7 +24,7 @@ import { queryKeys } from '../../lib/queryKeys';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
 import { useTheme } from '../../theme/useTheme';
-import { Button, Card, Input } from '../../components';
+import { Button, Card, Input, ImageWithFallback } from '../../components';
 import { spacing, typography, borderRadius } from '../../theme/theme';
 import { Business, BusinessMedia } from '../../types';
 import { RootStackParamList } from '../../navigation/RootNavigator';
@@ -348,7 +347,7 @@ export const OwnerProfileScreen: React.FC = () => {
                 onPress={() => setViewingMedia(item)}
                 activeOpacity={0.85}
               >
-                <Image source={{ uri: item.url }} style={styles.photoThumbImage} />
+                <ImageWithFallback uri={item.url} style={styles.photoThumbImage} iconSize={32} />
                 <TouchableOpacity
                   style={styles.photoDeleteBtn}
                   onPress={() => handleDeletePhoto(item)}
@@ -757,10 +756,11 @@ export const OwnerProfileScreen: React.FC = () => {
           </TouchableOpacity>
 
           {viewingMedia && (
-            <Image
-              source={{ uri: viewingMedia.url }}
+            <ImageWithFallback
+              uri={viewingMedia.url}
               style={styles.photoModalImage}
               resizeMode="contain"
+              iconSize={48}
             />
           )}
 

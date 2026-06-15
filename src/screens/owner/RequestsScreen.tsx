@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -31,6 +31,7 @@ import {
 import { spacing, typography, borderRadius } from '../../theme/theme';
 import { formatCurrency } from '../../lib/formatCurrency';
 import { useNotificationStore } from '../../store/notificationStore';
+import { useBackendNotificationSync } from '../../hooks/useBackendNotificationSync';
 
 type TabType = 'pending' | 'approved' | 'rejected' | 'staff';
 
@@ -68,6 +69,7 @@ export const RequestsScreen: React.FC = () => {
       return { appointments: Array.isArray(data) ? (data as AppointmentWithDetails[]) : [], business: biz };
     },
     enabled: !!user,
+    staleTime: 30000,
   });
 
   const appointments = appointmentsData?.appointments ?? [];
@@ -80,14 +82,26 @@ export const RequestsScreen: React.FC = () => {
       return Array.isArray(data) ? data : [];
     },
     enabled: !!user,
+    staleTime: 30000,
   });
 
+  const isRefetchingRef = useRef(false);
+
   useFocusEffect(
-    React.useCallback(() => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.bookings.ownerAll });
-      queryClient.invalidateQueries({ queryKey: queryKeys.employees.pending });
+    useCallback(() => {
+      if (isRefetchingRef.current) return;
+      isRefetchingRef.current = true;
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.bookings.ownerAll }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.employees.pending }),
+      ]).finally(() => {
+        isRefetchingRef.current = false;
+      });
     }, [queryClient])
   );
+
+  // Cross-device: pick up new booking requests created from another device.
+  useBackendNotificationSync([queryKeys.bookings.ownerAll]);
 
   const handleApprove = async (appointmentId: string) => {
     Alert.alert(
@@ -481,6 +495,8 @@ export const RequestsScreen: React.FC = () => {
             keyExtractor={(item) => item.id}
             removeClippedSubviews
             maxToRenderPerBatch={10}
+            windowSize={5}
+            initialNumToRender={6}
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
           />
@@ -500,6 +516,8 @@ export const RequestsScreen: React.FC = () => {
           keyExtractor={(item) => item.id}
           removeClippedSubviews
           maxToRenderPerBatch={10}
+          windowSize={5}
+          initialNumToRender={6}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
         />

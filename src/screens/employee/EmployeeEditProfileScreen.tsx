@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Image,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,7 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { authService } from '../../services/authService';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/useTheme';
-import { Button, Input, Card } from '../../components';
+import { Button, Input, Card, ImageWithFallback } from '../../components';
 import { spacing, typography, borderRadius } from '../../theme/theme';
 
 const schema = z.object({
@@ -127,7 +126,7 @@ export const EmployeeEditProfileScreen: React.FC = () => {
                 activeOpacity={0.8}
               >
                 {avatarUri ? (
-                  <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+                  <ImageWithFallback uri={avatarUri} style={styles.avatarImage} iconSize={40} />
                 ) : (
                   <View style={[styles.avatarPlaceholder, { backgroundColor: colors.muted }]}>
                     <Ionicons name="person" size={40} color={colors.mutedForeground} />

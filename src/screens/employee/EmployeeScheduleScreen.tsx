@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../../lib/queryKeys';
 import { useTranslation } from 'react-i18next';
@@ -128,7 +128,9 @@ export const EmployeeScheduleScreen: React.FC = () => {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
+  const navigation = useNavigation();
   const [schedule, setSchedule] = useState<DayEntry[]>(defaultSchedule());
+  const [initialSchedule, setInitialSchedule] = useState<DayEntry[]>(defaultSchedule());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -142,17 +144,19 @@ export const EmployeeScheduleScreen: React.FC = () => {
   const load = useCallback(async () => {
     try {
       const data = await employeeService.getSchedule();
-      if (Array.isArray(data) && data.length > 0) {
-        setSchedule((prev) =>
-          prev.map((day) => {
-            const saved = data.find((d: any) => d.dayOfWeek === day.dayOfWeek);
-            if (saved) {
-              return { ...day, enabled: true, startTime: saved.startTime, endTime: saved.endTime };
-            }
-            return { ...day, enabled: false };
-          })
-        );
-      }
+      const base = defaultSchedule();
+      const next = base.map((day) => {
+        const saved = Array.isArray(data) ? data.find((d: any) => d.dayOfWeek === day.dayOfWeek) : undefined;
+        if (saved) {
+          return { ...day, enabled: true, startTime: saved.startTime, endTime: saved.endTime };
+        }
+        if (Array.isArray(data) && data.length > 0) {
+          return { ...day, enabled: false };
+        }
+        return day;
+      });
+      setSchedule(next);
+      setInitialSchedule(next.map((d) => ({ ...d })));
     } catch {
       // silent
     } finally {
@@ -160,7 +164,17 @@ export const EmployeeScheduleScreen: React.FC = () => {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  const isRefetchingRef = useRef(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isRefetchingRef.current) return;
+      isRefetchingRef.current = true;
+      load().finally(() => {
+        isRefetchingRef.current = false;
+      });
+    }, [load])
+  );
 
   const update = (dayOfWeek: number, field: keyof DayEntry, value: any) => {
     setSchedule((prev) =>
@@ -187,10 +201,13 @@ export const EmployeeScheduleScreen: React.FC = () => {
     setPickerVisible(false);
   };
 
-  const save = async () => {
-    const entries = schedule
-      .filter((d) => d.enabled)
-      .map(({ dayOfWeek, startTime, endTime }) => ({ dayOfWeek, startTime, endTime }));
+  const save = async (): Promise<boolean> => {
+    const entries = schedule.map(({ dayOfWeek, startTime, endTime, enabled }) => ({
+      dayOfWeek,
+      startTime,
+      endTime,
+      isWorking: enabled,
+    }));
 
     setSaving(true);
     try {
@@ -203,13 +220,57 @@ export const EmployeeScheduleScreen: React.FC = () => {
       if (businessId) {
         queryClient.invalidateQueries({ queryKey: ['businesses', businessId, 'timeSlots'] });
       }
+      setInitialSchedule(schedule.map((d) => ({ ...d })));
       Alert.alert(t('common.success'), t('employeeSchedule.saveSuccess'));
+      return true;
     } catch (e: any) {
       Alert.alert(t('common.error'), e.message || t('employeeSchedule.saveError'));
+      return false;
     } finally {
       setSaving(false);
     }
   };
+
+  const isDirty = JSON.stringify(schedule) !== JSON.stringify(initialSchedule);
+
+  // Tab switches don't fire `beforeRemove`, so a dirty schedule is intercepted via the
+  // tab navigator's `state` event: bounce back to this tab, then ask the user how to proceed.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('state' as any, (e: any) => {
+      const tabState = e.data?.state;
+      if (!tabState || typeof tabState.index !== 'number') return;
+
+      const activeRoute = tabState.routes[tabState.index];
+      if (!activeRoute || activeRoute.name === 'EmployeeSchedule' || !isDirty) return;
+
+      const targetName = activeRoute.name;
+      navigation.navigate('EmployeeSchedule' as never);
+
+      Alert.alert(
+        t('employeeSchedule.unsavedTitle'),
+        t('employeeSchedule.unsavedMessage'),
+        [
+          {
+            text: t('employeeSchedule.discardExit'),
+            style: 'destructive',
+            onPress: () => {
+              setSchedule(initialSchedule.map((d) => ({ ...d })));
+              navigation.navigate(targetName as never);
+            },
+          },
+          {
+            text: t('common.save'),
+            onPress: async () => {
+              const ok = await save();
+              if (ok) navigation.navigate(targetName as never);
+            },
+          },
+        ]
+      );
+    });
+
+    return unsubscribe;
+  }, [navigation, isDirty, initialSchedule, schedule]);
 
   if (loading) {
     return (

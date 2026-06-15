@@ -11,6 +11,8 @@ import { LoadingSpinner } from '../components';
 // Auth Screens
 import { AuthScreen } from '../screens/auth/AuthScreen';
 import { EmployeePendingScreen } from '../screens/auth/EmployeePendingScreen';
+import { EmployeeRejectedScreen } from '../screens/auth/EmployeeRejectedScreen';
+import { EmployeeJoinScreen } from '../screens/auth/EmployeeJoinScreen';
 
 // User Screens
 import { HomeScreen } from '../screens/user/HomeScreen';
@@ -46,6 +48,8 @@ export type RootStackParamList = {
   OwnerTabs: undefined;
   EmployeeTabs: undefined;
   EmployeePending: undefined;
+  EmployeeRejected: undefined;
+  EmployeeJoin: undefined;
   Notifications: undefined;
   OwnerReviews: { businessId: string };
   BusinessDetail: { businessId: string };
@@ -343,10 +347,22 @@ export const RootNavigator = () => {
               component={EmployeeTabs}
               options={{ headerShown: false }}
             />
-          ) : (
+          ) : user.employee?.status === 'PENDING' ? (
             <Stack.Screen
               name="EmployeePending"
               component={EmployeePendingScreen}
+              options={{ headerShown: false }}
+            />
+          ) : user.employee?.status === 'REJECTED' ? (
+            <Stack.Screen
+              name="EmployeeRejected"
+              component={EmployeeRejectedScreen}
+              options={{ headerShown: false }}
+            />
+          ) : (
+            <Stack.Screen
+              name="EmployeeJoin"
+              component={EmployeeJoinScreen}
               options={{ headerShown: false }}
             />
           )}

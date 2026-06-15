@@ -90,9 +90,7 @@ export const AuthScreen: React.FC = () => {
       const expectedRole = roleTab === 'user' ? 'USER' : roleTab === 'employee' ? 'EMPLOYEE' : 'OWNER';
       await login(data, expectedRole);
     } catch (error: any) {
-      if (error.code === 'EMPLOYEE_REJECTED') {
-        Alert.alert(t('common.error'), t('auth.employeeRejected'));
-      } else if (error.message === 'Role mismatch') {
+      if (error.message === 'Role mismatch') {
         const errorKey = error.expectedRole === 'USER'
           ? 'auth.roleMismatchCustomer'
           : 'auth.roleMismatchOwner';

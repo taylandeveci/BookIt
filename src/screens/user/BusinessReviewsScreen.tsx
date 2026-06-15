@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -50,6 +50,70 @@ interface RatingDistribution {
   2: number;
   1: number;
 }
+
+const ReviewListItem = React.memo<{
+  item: Review;
+  isHelpful: boolean;
+  onToggleHelpful: (reviewId: string) => void;
+}>(({ item, isHelpful, onToggleHelpful }) => {
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+  const dateFormatted = new Date(item.createdAt).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+
+  return (
+    <Card style={styles.reviewCard}>
+      {/* Avatar + Name + Time */}
+      <View style={styles.reviewHeader}>
+        <View style={styles.avatarRow}>
+          <View style={[styles.avatar, { backgroundColor: colors.muted }]}>
+            <Ionicons name="person" size={20} color={colors.mutedForeground} />
+          </View>
+          <View style={styles.userInfo}>
+            <Text style={[styles.userName, typography.bodySemiBold, { color: colors.foreground }]}>
+              {item.user?.fullName || t('common.anonymous')}
+            </Text>
+            <RatingStars rating={item.rating} size={14} />
+          </View>
+        </View>
+        <Text style={[styles.timeAgo, typography.body, { color: colors.mutedForeground }]}>
+          {dateFormatted}
+        </Text>
+      </View>
+
+      {/* Review Text */}
+      <Text style={[styles.reviewText, typography.body, { color: colors.foreground }]}>
+        {item.commentText || item.comment}
+      </Text>
+
+      {/* Helpful Button */}
+      <View style={styles.helpfulRow}>
+        <TouchableOpacity
+          onPress={() => onToggleHelpful(item.id)}
+          style={styles.helpfulButton}
+        >
+          <Ionicons
+            name={isHelpful ? 'thumbs-up' : 'thumbs-up-outline'}
+            size={16}
+            color={isHelpful ? colors.primary : colors.mutedForeground}
+          />
+          <Text
+            style={[
+              styles.helpfulText,
+              typography.body,
+              { color: isHelpful ? colors.primary : colors.mutedForeground },
+            ]}
+          >
+            {isHelpful ? '1 found helpful' : 'Helpful?'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </Card>
+  );
+});
 
 export const BusinessReviewsScreen: React.FC = () => {
   const { colors } = useTheme();
@@ -117,7 +181,7 @@ export const BusinessReviewsScreen: React.FC = () => {
     return filtered;
   }, [reviews, selectedFilter]);
 
-  const toggleHelpful = (reviewId: string) => {
+  const toggleHelpful = useCallback((reviewId: string) => {
     setHelpfulReviews((prev) => {
       const updated = new Set(prev);
       if (updated.has(reviewId)) {
@@ -127,9 +191,9 @@ export const BusinessReviewsScreen: React.FC = () => {
       }
       return updated;
     });
-  };
+  }, []);
 
-  const renderHeader = () => (
+  const renderHeader = useCallback(() => (
     <View>
       {/* Rating Summary Card */}
       <Card style={styles.summaryCard}>
@@ -177,66 +241,14 @@ export const BusinessReviewsScreen: React.FC = () => {
         ))}
       </View>
     </View>
+  ), [ratingLoading, liveRating, liveReviewCount, distribution, selectedFilter, colors]);
+
+  const renderReview = useCallback(
+    ({ item }: { item: Review }) => (
+      <ReviewListItem item={item} isHelpful={helpfulReviews.has(item.id)} onToggleHelpful={toggleHelpful} />
+    ),
+    [helpfulReviews, toggleHelpful]
   );
-
-  const renderReview = ({ item }: { item: Review }) => {
-    const isHelpful = helpfulReviews.has(item.id);
-    const dateFormatted = new Date(item.createdAt).toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-
-    return (
-      <Card style={styles.reviewCard}>
-        {/* Avatar + Name + Time */}
-        <View style={styles.reviewHeader}>
-          <View style={styles.avatarRow}>
-            <View style={[styles.avatar, { backgroundColor: colors.muted }]}>
-              <Ionicons name="person" size={20} color={colors.mutedForeground} />
-            </View>
-            <View style={styles.userInfo}>
-              <Text style={[styles.userName, typography.bodySemiBold, { color: colors.foreground }]}>
-                {item.user?.fullName || t('common.anonymous')}
-              </Text>
-              <RatingStars rating={item.rating} size={14} />
-            </View>
-          </View>
-          <Text style={[styles.timeAgo, typography.body, { color: colors.mutedForeground }]}>
-            {dateFormatted}
-          </Text>
-        </View>
-
-        {/* Review Text */}
-        <Text style={[styles.reviewText, typography.body, { color: colors.foreground }]}>
-          {item.commentText || item.comment}
-        </Text>
-
-        {/* Helpful Button */}
-        <View style={styles.helpfulRow}>
-          <TouchableOpacity
-            onPress={() => toggleHelpful(item.id)}
-            style={styles.helpfulButton}
-          >
-            <Ionicons
-              name={isHelpful ? 'thumbs-up' : 'thumbs-up-outline'}
-              size={16}
-              color={isHelpful ? colors.primary : colors.mutedForeground}
-            />
-            <Text
-              style={[
-                styles.helpfulText,
-                typography.body,
-                { color: isHelpful ? colors.primary : colors.mutedForeground },
-              ]}
-            >
-              {isHelpful ? '1 found helpful' : 'Helpful?'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </Card>
-    );
-  };
 
   if (loading) {
     return (
@@ -287,6 +299,8 @@ export const BusinessReviewsScreen: React.FC = () => {
         keyExtractor={(item) => item.id}
         removeClippedSubviews
         maxToRenderPerBatch={10}
+        windowSize={5}
+        initialNumToRender={6}
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={
           <EmptyState

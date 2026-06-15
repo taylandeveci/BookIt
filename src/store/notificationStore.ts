@@ -13,7 +13,8 @@ export type NotificationType =
   | 'employee_approved'
   | 'employee_rejected'
   | 'new_review'
-  | 'service_start_code';
+  | 'service_start_code'
+  | 'new_booking_request';
 
 export interface AppNotification {
   id: string;

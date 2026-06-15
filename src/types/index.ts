@@ -1,6 +1,6 @@
 export type UserRole = 'USER' | 'EMPLOYEE' | 'OWNER';
 
-export type EmployeeStatus = 'PENDING' | 'ACTIVE' | 'REJECTED';
+export type EmployeeStatus = 'PENDING' | 'ACTIVE' | 'REJECTED' | 'UNASSIGNED';
 
 export interface User {
   id: string;
@@ -11,7 +11,7 @@ export interface User {
   employee?: {
     id: string;
     status: EmployeeStatus;
-    businessId: string;
+    businessId: string | null;
   };
 }
 

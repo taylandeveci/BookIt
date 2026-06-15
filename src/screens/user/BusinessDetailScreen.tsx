@@ -56,6 +56,41 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
+const GalleryImage: React.FC<{ uri: string; width: number; height: number }> = ({ uri, width, height }) => {
+  const { colors } = useTheme();
+  const [loading, setLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return (
+      <View style={[{ width, height }, styles.galleryPlaceholder, { backgroundColor: colors.muted }]}>
+        <Ionicons name="image-outline" size={40} color={colors.mutedForeground} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ width, height }}>
+      <Image
+        source={{ uri }}
+        style={{ width, height }}
+        resizeMode="cover"
+        onLoadStart={() => setLoading(true)}
+        onLoadEnd={() => setLoading(false)}
+        onError={() => {
+          setHasError(true);
+          setLoading(false);
+        }}
+      />
+      {loading && (
+        <View style={[StyleSheet.absoluteFill, styles.galleryLoading]}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      )}
+    </View>
+  );
+};
+
 export const BusinessDetailScreen: React.FC = () => {
   const { colors, shadows } = useTheme();
   const { t, i18n } = useTranslation();
@@ -87,6 +122,7 @@ export const BusinessDetailScreen: React.FC = () => {
   const { data: business, isLoading: businessLoading } = useQuery({
     queryKey: queryKeys.businesses.detail(businessId),
     queryFn: () => businessService.getBusiness(businessId),
+    staleTime: 60000,
   });
 
   const { data: employees = [], isLoading: employeesLoading } = useQuery({
@@ -95,6 +131,7 @@ export const BusinessDetailScreen: React.FC = () => {
       const data = await businessService.getEmployees(businessId);
       return Array.isArray(data) ? data as Employee[] : [];
     },
+    staleTime: 60000,
   });
 
   const { data: services = [], isLoading: servicesLoading } = useQuery({
@@ -103,6 +140,7 @@ export const BusinessDetailScreen: React.FC = () => {
       const data = await businessService.getServices(businessId);
       return Array.isArray(data) ? data as Service[] : [];
     },
+    staleTime: 60000,
   });
 
   const { data: reviews = [], isLoading: reviewsLoading } = useQuery({
@@ -111,6 +149,7 @@ export const BusinessDetailScreen: React.FC = () => {
       const data = await reviewService.getReviews(businessId);
       return Array.isArray(data) ? data as Review[] : [];
     },
+    staleTime: 30000,
   });
 
   const loading = businessLoading || employeesLoading || servicesLoading || reviewsLoading;
@@ -269,12 +308,11 @@ export const BusinessDetailScreen: React.FC = () => {
               keyExtractor={(item) => item.id}
               onViewableItemsChanged={onViewableItemsChanged}
               viewabilityConfig={viewabilityConfig.current}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+              initialNumToRender={6}
               renderItem={({ item }) => (
-                <Image
-                  source={{ uri: item.url }}
-                  style={{ width: SCREEN_WIDTH, height: 220 }}
-                  resizeMode="cover"
-                />
+                <GalleryImage uri={item.url} width={SCREEN_WIDTH} height={220} />
               )}
             />
             {business.media.length > 1 && (
@@ -816,6 +854,14 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
+  },
+  galleryPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  galleryLoading: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     padding: spacing.xl,

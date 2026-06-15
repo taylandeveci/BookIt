@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { employeeService } from '../../services/employeeService';
 import { Button, Badge, Card, StatusBadge } from '../../components';
 import { spacing, typography, borderRadius } from '../../theme/theme';
 import { useNotificationStore } from '../../store/notificationStore';
+import { useBackendNotificationSync } from '../../hooks/useBackendNotificationSync';
 
 function toDateStr(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -93,13 +94,23 @@ export const EmployeeDashboardScreen: React.FC = () => {
   const { data: allAppointments = [], isLoading, refetch } = useQuery({
     queryKey: queryKeys.bookings.employeeAll,
     queryFn: () => employeeService.getAllAppointments(),
+    staleTime: 30000,
   });
+
+  const isRefetchingRef = useRef(false);
 
   useFocusEffect(
     React.useCallback(() => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.bookings.employeeAll });
+      if (isRefetchingRef.current) return;
+      isRefetchingRef.current = true;
+      queryClient.invalidateQueries({ queryKey: queryKeys.bookings.employeeAll }).finally(() => {
+        isRefetchingRef.current = false;
+      });
     }, [queryClient])
   );
+
+  // Cross-device: pick up new booking requests created from another device.
+  useBackendNotificationSync([queryKeys.bookings.employeeAll]);
 
   const today = toDateStr(new Date());
 

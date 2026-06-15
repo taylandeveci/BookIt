@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -62,11 +62,16 @@ export const ProfileScreen: React.FC = () => {
     setCurrentLang(lang);
   };
 
+  const isRefetchingRef = useRef(false);
+
   useFocusEffect(
     React.useCallback(() => {
-      if (user) {
-        loadAppointments();
-      }
+      if (!user) return;
+      if (isRefetchingRef.current) return;
+      isRefetchingRef.current = true;
+      loadAppointments().finally(() => {
+        isRefetchingRef.current = false;
+      });
     }, [user])
   );
 

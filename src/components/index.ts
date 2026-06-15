@@ -13,3 +13,4 @@ export { StatusBadge } from './shared/StatusBadge';
 export { AverageRating } from './shared/AverageRating';
 export { ReviewCard } from './shared/ReviewCard';
 export { ServiceCard } from './shared/ServiceCard';
+export { ImageWithFallback } from './shared/ImageWithFallback';

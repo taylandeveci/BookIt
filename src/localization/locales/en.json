@@ -84,7 +84,6 @@
     "ownerDemo": "Owner Demo",
     "roleMismatchCustomer": "This account is a Business Owner account. Please switch to Business Owner login.",
     "roleMismatchOwner": "This account is a Customer account. Please switch to Customer login.",
-    "employeeRejected": "Your account has been rejected. Please contact the business owner.",
     "joinCodeLength": "Code must be 6 characters.",
     "confirmPasswordRequired": "Please confirm your password.",
     "businessNameRequired": "Business name is required for business owners.",
@@ -507,9 +506,25 @@
   },
   "employeePending": {
     "title": "Pending Approval",
-    "description": "Your registration has been received. Waiting for the business owner to approve your request.",
+    "description": "Your application is being reviewed by the business owner.",
     "afterApproval": "After approval, you can log in again to access the employee panel.",
     "back": "Go Back"
+  },
+  "employeeRejected": {
+    "title": "Application Rejected",
+    "description": "Your application to this business was rejected. Enter a join code to apply to a different business.",
+    "joinCodePlaceholder": "Enter join code e.g. CRAFT1",
+    "submit": "Apply to New Business",
+    "success": "Your application has been submitted. Waiting for approval.",
+    "back": "Log Out"
+  },
+  "employeeJoin": {
+    "title": "Join a Business",
+    "subtitle": "Enter the join code for the business you want to work for",
+    "joinCodePlaceholder": "Enter join code e.g. CRAFT1",
+    "submit": "Apply",
+    "success": "Your application has been submitted. Waiting for approval.",
+    "back": "Log Out"
   },
   "employeeDashboard": {
     "greeting": "Hello",
@@ -568,8 +583,8 @@
   "employeeSchedule": {
     "title": "Working Hours",
     "save": "Save Schedule",
-    "saveSuccess": "Schedule saved",
-    "saveError": "Failed to save schedule",
+    "saveSuccess": "Working hours saved",
+    "saveError": "Failed to save working hours",
     "dayOff": "Day Off",
     "startTime": "Start",
     "endTime": "End",
@@ -581,7 +596,10 @@
     "saturday": "Saturday",
     "sunday": "Sunday",
     "cancelBtn": "Cancel",
-    "doneBtn": "Done"
+    "doneBtn": "Done",
+    "unsavedTitle": "Unsaved Changes",
+    "unsavedMessage": "Your working hours have not been saved. Do you want to exit?",
+    "discardExit": "Exit"
   },
   "employeeProfile": {
     "role": "Employee",
