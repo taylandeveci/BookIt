@@ -107,6 +107,10 @@ export const authService = {
     if (user?.fullName && !user.name) {
       user.name = user.fullName;
     }
+    // Backend returns avatarUrl; frontend User type expects avatar
+    if (user?.avatarUrl !== undefined && user.avatar === undefined) {
+      user.avatar = user.avatarUrl ?? undefined;
+    }
     return user as User;
   },
 
@@ -136,7 +140,7 @@ export const authService = {
     return { accessToken, refreshToken };
   },
 
-  async updateProfile(data: { name?: string; email?: string; avatarUrl?: string }): Promise<User> {
+  async updateProfile(data: { name?: string; email?: string; avatarUrl?: string | null }): Promise<User> {
     return await apiClient.put<User>('/auth/profile/me', data);
   },
 

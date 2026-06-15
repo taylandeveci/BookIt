@@ -294,7 +294,10 @@
     "save": "Save Changes",
     "cancel": "Cancel",
     "updateSuccess": "Profile updated successfully",
-    "updateError": "Failed to update profile"
+    "updateError": "Failed to update profile",
+    "removePhoto": "Remove Photo",
+    "removePhotoConfirm": "Remove your profile photo?",
+    "removePhotoError": "Failed to remove photo"
   },
   "changePassword": {
     "title": "Change Password",

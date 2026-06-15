@@ -294,7 +294,10 @@
     "save": "Değişiklikleri Kaydet",
     "cancel": "İptal",
     "updateSuccess": "Profil güncellendi",
-    "updateError": "Profil güncellenemedi"
+    "updateError": "Profil güncellenemedi",
+    "removePhoto": "Fotoğrafı Kaldır",
+    "removePhotoConfirm": "Profil fotoğrafınızı kaldırmak istiyor musunuz?",
+    "removePhotoError": "Fotoğraf kaldırılamadı"
   },
   "changePassword": {
     "title": "Şifre Değiştir",

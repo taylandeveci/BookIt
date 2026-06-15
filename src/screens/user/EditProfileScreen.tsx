@@ -57,6 +57,29 @@ export const EditProfileScreen: React.FC = () => {
     },
   });
 
+  const handleRemoveAvatar = () => {
+    Alert.alert(t('editProfile.removePhoto'), t('editProfile.removePhotoConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('editProfile.removePhoto'),
+        style: 'destructive',
+        onPress: async () => {
+          setUploadError(null);
+          setUploading(true);
+          try {
+            const updatedUser = await authService.updateProfile({ avatarUrl: null });
+            setUser(updatedUser);
+            setAvatarUri(null);
+          } catch (error: any) {
+            setUploadError(error.message || t('editProfile.removePhotoError'));
+          } finally {
+            setUploading(false);
+          }
+        },
+      },
+    ]);
+  };
+
   const handlePickAvatar = async () => {
     setUploadError(null);
 
@@ -154,6 +177,20 @@ export const EditProfileScreen: React.FC = () => {
                 <Ionicons name="camera-outline" size={16} color="#FFFFFF" />
               </View>
             </View>
+
+            {avatarUri ? (
+              <TouchableOpacity
+                style={styles.removePhotoBtn}
+                onPress={handleRemoveAvatar}
+                disabled={uploading}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="trash-outline" size={16} color={colors.destructive} />
+                <Text style={[typography.body, { color: colors.destructive, fontSize: 13 }]}>
+                  {t('editProfile.removePhoto')}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
 
             {uploadError ? (
               <Text style={[styles.uploadError, typography.body, { color: colors.destructive }]}>
@@ -269,6 +306,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  removePhotoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
   },
   uploadError: {
     fontSize: typography.sizes.sm,

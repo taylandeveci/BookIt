@@ -20,7 +20,7 @@ import { appointmentService } from '../../services/appointmentService';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
 import { useTheme } from '../../theme/useTheme';
-import { Button, Card, EmptyState, LoadingSpinner, Toast } from '../../components';
+import { Button, Card, EmptyState, ImageWithFallback, LoadingSpinner, Toast } from '../../components';
 import { spacing, typography, borderRadius } from '../../theme/theme';
 import { Appointment, Business, Service } from '../../types';
 import { setAppLanguage, getCurrentLanguage } from '../../localization/i18n';
@@ -184,9 +184,13 @@ export const ProfileScreen: React.FC = () => {
       {/* Profile Header */}
       <Card style={styles.card}>
         <View style={styles.profileHeader}>
-          <View style={[styles.avatarContainer, { backgroundColor: colors.muted }]}>
-            <Ionicons name="person" size={48} color={colors.mutedForeground} />
-          </View>
+          {user.avatar ? (
+            <ImageWithFallback uri={user.avatar} style={styles.avatarContainer} iconSize={48} />
+          ) : (
+            <View style={[styles.avatarContainer, { backgroundColor: colors.muted }]}>
+              <Ionicons name="person" size={48} color={colors.mutedForeground} />
+            </View>
+          )}
           
           <Text
             style={[
