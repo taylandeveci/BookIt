@@ -685,7 +685,10 @@
     "coordinates": "Map Coordinates",
     "coordinatesPlaceholder": "e.g. 39.871889, 32.659516",
     "coordinatesHelp": "Paste coordinates from Google Maps (latitude, longitude) to pin your business location on the map.",
-    "coordinatesInvalid": "Enter valid coordinates in the format: latitude, longitude"
+    "coordinatesInvalid": "Enter valid coordinates in the format: latitude, longitude",
+    "tags": "Tags",
+    "tagsHelp": "Choose the categories that best describe your business. These power the category filters customers use in search.",
+    "noTags": "No tags selected"
   },
   "businessReviews": {
     "title": "Reviews",
@@ -728,5 +731,27 @@
     "wrongCode": "Incorrect code. Please try again.",
     "codeExpiredError": "Code expired. Tap start again for a new code.",
     "waitingForCustomer": "Customer is viewing the code... Ask for the code and enter it below."
+  },
+  "businessTags": {
+    "hairdresser": "Hairdresser",
+    "hairColor": "Hair Color",
+    "womensCare": "Women's Care",
+    "beauty": "Beauty",
+    "barber": "Barber",
+    "haircut": "Haircut",
+    "beard": "Beard",
+    "mensGrooming": "Men's Grooming",
+    "spa": "Spa",
+    "massage": "Massage",
+    "skinCare": "Skin Care",
+    "wellness": "Wellness",
+    "kidsHaircut": "Kids' Haircut",
+    "nailArt": "Nail Art",
+    "manicure": "Manicure",
+    "pedicure": "Pedicure",
+    "hairStyling": "Hair Styling",
+    "coloring": "Coloring",
+    "care": "Care",
+    "premiumCare": "Premium Care"
   }
 }

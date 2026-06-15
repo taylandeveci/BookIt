@@ -31,6 +31,7 @@ import { Business, BusinessMedia } from '../../types';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { setAppLanguage, getCurrentLanguage } from '../../localization/i18n';
 import { useNotificationStore } from '../../store/notificationStore';
+import { BUSINESS_TAG_DEFS } from '../../constants/businessTags';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -101,6 +102,9 @@ export const OwnerProfileScreen: React.FC = () => {
   const [mediaLoading, setMediaLoading] = useState(false);
   const [viewingMedia, setViewingMedia] = useState<BusinessMedia | null>(null);
 
+  // Tags state (preset categories, kept in sync with customer search filters)
+  const [editTags, setEditTags] = useState<string[]>([]);
+
   const {
     control,
     handleSubmit,
@@ -125,6 +129,7 @@ export const OwnerProfileScreen: React.FC = () => {
       setJoinCodeEnabled(data.joinCodeEnabled ?? false);
       setReleaseOnEarlyCompletion(data.releaseOnEarlyCompletion ?? false);
       setCancellationWindowMinutes(data.cancellationWindowMinutes ?? 60);
+      setEditTags(data.tags ?? []);
       reset({
         name: data.name || '',
         description: data.description || '',
@@ -225,6 +230,7 @@ export const OwnerProfileScreen: React.FC = () => {
         phone: data.phone,
         locationLat: coordinates ? coordinates.latitude : null,
         locationLng: coordinates ? coordinates.longitude : null,
+        tags: editTags,
       });
       setBusiness(updated);
       setIsEditing(false);
@@ -239,6 +245,12 @@ export const OwnerProfileScreen: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleToggleTag = (tagValue: string) => {
+    setEditTags((prev) =>
+      prev.includes(tagValue) ? prev.filter((t) => t !== tagValue) : [...prev, tagValue]
+    );
   };
 
   const handleCopyJoinCode = async () => {
@@ -547,11 +559,52 @@ export const OwnerProfileScreen: React.FC = () => {
                   </MapView>
                 </View>
               )}
+
+              <View>
+                <Text style={[typography.bodySemiBold, { color: colors.foreground, marginBottom: spacing.xs }]}>
+                  {t('ownerProfile.tags')}
+                </Text>
+                <Text style={[typography.body, styles.coordinatesHelp, { color: colors.mutedForeground, marginTop: 0, marginBottom: spacing.sm }]}>
+                  {t('ownerProfile.tagsHelp')}
+                </Text>
+                <View style={styles.tagsContainer}>
+                  {BUSINESS_TAG_DEFS.map((tagDef) => {
+                    const selected = editTags.includes(tagDef.tagValue);
+                    return (
+                      <TouchableOpacity
+                        key={tagDef.tagValue}
+                        style={[
+                          styles.tagOption,
+                          {
+                            backgroundColor: selected ? colors.primary : colors.muted,
+                            borderColor: selected ? colors.primary : colors.border,
+                          },
+                        ]}
+                        onPress={() => handleToggleTag(tagDef.tagValue)}
+                        activeOpacity={0.7}
+                      >
+                        {selected && (
+                          <Ionicons name="checkmark" size={14} color={colors.primaryForeground} style={styles.tagOptionIcon} />
+                        )}
+                        <Text
+                          style={[
+                            typography.bodySemiBold,
+                            { fontSize: typography.sizes.xs, color: selected ? colors.primaryForeground : colors.mutedForeground },
+                          ]}
+                        >
+                          {t(tagDef.i18nKey)}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
               <View style={styles.buttonRow}>
                 <Button
                   title={t('common.cancel')}
                   variant="outline"
-                  onPress={() => { setIsEditing(false); reset(); }}
+                  onPress={() => { setIsEditing(false); reset(); setEditTags(business?.tags ?? []); }}
                   style={styles.halfButton}
                 />
                 <Button
@@ -615,6 +668,25 @@ export const OwnerProfileScreen: React.FC = () => {
                   </View>
                 </View>
               ) : null}
+              <View style={styles.bizInfoBlock}>
+                <Text style={[styles.bizLabel, typography.bodySemiBold, { color: colors.mutedForeground }]}>{t('ownerProfile.tags')}</Text>
+                {business.tags && business.tags.length > 0 ? (
+                  <View style={styles.tagsContainer}>
+                    {business.tags.map((tag) => {
+                      const tagDef = BUSINESS_TAG_DEFS.find((d) => d.tagValue === tag);
+                      return (
+                        <View key={tag} style={[styles.tagChip, { backgroundColor: colors.muted, borderRadius: borderRadius.pill }]}>
+                          <Text style={[typography.body, { fontSize: typography.sizes.xs, color: colors.mutedForeground }]}>
+                            {tagDef ? t(tagDef.i18nKey) : tag}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ) : (
+                  <Text style={[styles.bizValue, typography.body, { color: colors.mutedForeground }]}>{t('ownerProfile.noTags')}</Text>
+                )}
+              </View>
               {business.phone ? (
                 <View style={styles.bizInfoBlock}>
                   <Text style={[styles.bizLabel, typography.bodySemiBold, { color: colors.mutedForeground }]}>{t('ownerProfile.phone')}</Text>
@@ -970,6 +1042,26 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
     elevation: 4,
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  tagOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.pill,
+    borderWidth: 1,
+  },
+  tagOptionIcon: {
+    marginRight: 4,
+  },
+  tagChip: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
   },
   buttonRow: {
     flexDirection: 'row',

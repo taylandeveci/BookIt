@@ -685,7 +685,10 @@
     "coordinates": "Harita Koordinatları",
     "coordinatesPlaceholder": "örn. 39.871889, 32.659516",
     "coordinatesHelp": "İşletmenizin haritada gözükmesi için Google Maps'ten aldığınız koordinatları (enlem, boylam) buraya yapıştırın.",
-    "coordinatesInvalid": "Koordinatları şu formatta girin: enlem, boylam"
+    "coordinatesInvalid": "Koordinatları şu formatta girin: enlem, boylam",
+    "tags": "Etiketler",
+    "tagsHelp": "İşletmenizi en iyi tanımlayan kategorileri seçin. Bu etiketler müşterilerin arama ekranında kullandığı kategori filtreleriyle senkron çalışır.",
+    "noTags": "Seçili etiket yok"
   },
   "businessReviews": {
     "title": "Yorumlar",
@@ -728,5 +731,27 @@
     "wrongCode": "Kod hatalı. Lütfen tekrar deneyin.",
     "codeExpiredError": "Kodun süresi doldu. Yeni kod için tekrar başlatın.",
     "waitingForCustomer": "Müşteri kodu alıyor... Müşteriden kodu öğrenin ve girin."
+  },
+  "businessTags": {
+    "hairdresser": "Kuaför",
+    "hairColor": "Saç Boyama",
+    "womensCare": "Kadın Bakımı",
+    "beauty": "Güzellik",
+    "barber": "Berber",
+    "haircut": "Saç Kesimi",
+    "beard": "Sakal",
+    "mensGrooming": "Erkek Bakımı",
+    "spa": "Spa",
+    "massage": "Masaj",
+    "skinCare": "Cilt Bakımı",
+    "wellness": "Wellness",
+    "kidsHaircut": "Çocuk Kesimi",
+    "nailArt": "Nail Art",
+    "manicure": "Manikür",
+    "pedicure": "Pedikür",
+    "hairStyling": "Saç Tasarımı",
+    "coloring": "Renklendirme",
+    "care": "Bakım",
+    "premiumCare": "Premium Bakım"
   }
 }
