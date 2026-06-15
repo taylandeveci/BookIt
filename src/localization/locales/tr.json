@@ -681,7 +681,11 @@
     "descriptionPlaceholder": "İşletmenizin kısa açıklaması",
     "addressPlaceholder": "Atatürk Cad. No:1",
     "cityPlaceholder": "Şehrinizi girin",
-    "phonePlaceholder": "+90 555 123 4567"
+    "phonePlaceholder": "+90 555 123 4567",
+    "coordinates": "Harita Koordinatları",
+    "coordinatesPlaceholder": "örn. 39.871889, 32.659516",
+    "coordinatesHelp": "İşletmenizin haritada gözükmesi için Google Maps'ten aldığınız koordinatları (enlem, boylam) buraya yapıştırın.",
+    "coordinatesInvalid": "Koordinatları şu formatta girin: enlem, boylam"
   },
   "businessReviews": {
     "title": "Yorumlar",

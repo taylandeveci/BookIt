@@ -14,6 +14,7 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { useForm, Controller } from 'react-hook-form';
+import MapView, { Marker } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -39,9 +40,27 @@ interface BusinessFormData {
   address: string;
   city: string;
   phone: string;
+  coordinates: string;
 }
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
+
+// Accepts "lat, lng" in Google Maps format, e.g. "39.871889049180794, 32.65951670446915"
+const COORDINATES_REGEX = /^\s*(-?\d{1,2}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$/;
+
+function parseCoordinates(value: string): { latitude: number; longitude: number } | null {
+  const match = value.match(COORDINATES_REGEX);
+  if (!match) return null;
+  const latitude = parseFloat(match[1]);
+  const longitude = parseFloat(match[2]);
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return null;
+  return { latitude, longitude };
+}
+
+function formatCoordinates(lat?: number | null, lng?: number | null): string {
+  if (lat === undefined || lat === null || lng === undefined || lng === null) return '';
+  return `${lat}, ${lng}`;
+}
 
 export const OwnerProfileScreen: React.FC = () => {
   const { colors } = useTheme();
@@ -86,8 +105,12 @@ export const OwnerProfileScreen: React.FC = () => {
     control,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<BusinessFormData>();
+
+  const coordinatesValue = watch('coordinates');
+  const previewCoordinates = coordinatesValue ? parseCoordinates(coordinatesValue) : null;
 
   useEffect(() => {
     loadBusiness();
@@ -108,6 +131,7 @@ export const OwnerProfileScreen: React.FC = () => {
         address: data.address || '',
         city: data.city || '',
         phone: data.phone || '',
+        coordinates: formatCoordinates(data.locationLat, data.locationLng),
       });
     } catch (error: any) {
       Alert.alert(t('common.error'), t('ownerProfile.loadError'));
@@ -183,6 +207,14 @@ export const OwnerProfileScreen: React.FC = () => {
   };
 
   const onSaveBusiness = async (data: BusinessFormData) => {
+    const trimmedCoordinates = data.coordinates?.trim() ?? '';
+    const coordinates = trimmedCoordinates ? parseCoordinates(trimmedCoordinates) : null;
+
+    if (trimmedCoordinates && !coordinates) {
+      Alert.alert(t('common.error'), t('ownerProfile.coordinatesInvalid'));
+      return;
+    }
+
     try {
       setSaving(true);
       const updated = await ownerService.updateBusiness({
@@ -191,6 +223,8 @@ export const OwnerProfileScreen: React.FC = () => {
         address: data.address,
         city: data.city,
         phone: data.phone,
+        locationLat: coordinates ? coordinates.latitude : null,
+        locationLng: coordinates ? coordinates.longitude : null,
       });
       setBusiness(updated);
       setIsEditing(false);
@@ -470,6 +504,49 @@ export const OwnerProfileScreen: React.FC = () => {
                   />
                 )}
               />
+              <Controller
+                control={control}
+                name="coordinates"
+                rules={{
+                  validate: (value) =>
+                    !value?.trim() || parseCoordinates(value) !== null || t('ownerProfile.coordinatesInvalid'),
+                }}
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <Input
+                    label={t('ownerProfile.coordinates')}
+                    placeholder={t('ownerProfile.coordinatesPlaceholder')}
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    error={errors.coordinates?.message}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                )}
+              />
+              <Text style={[typography.body, styles.coordinatesHelp, { color: colors.mutedForeground }]}>
+                {t('ownerProfile.coordinatesHelp')}
+              </Text>
+              {previewCoordinates && (
+                <View style={[styles.mapPreview, { borderColor: colors.border }]}>
+                  <MapView
+                    style={StyleSheet.absoluteFill}
+                    region={{
+                      latitude: previewCoordinates.latitude,
+                      longitude: previewCoordinates.longitude,
+                      latitudeDelta: 0.01,
+                      longitudeDelta: 0.01,
+                    }}
+                    pointerEvents="none"
+                  >
+                    <Marker coordinate={previewCoordinates} tracksViewChanges={false}>
+                      <View style={styles.markerContainer}>
+                        <Ionicons name="location" size={20} color="#4A5E6A" />
+                      </View>
+                    </Marker>
+                  </MapView>
+                </View>
+              )}
               <View style={styles.buttonRow}>
                 <Button
                   title={t('common.cancel')}
@@ -507,6 +584,35 @@ export const OwnerProfileScreen: React.FC = () => {
                 <View style={styles.bizInfoBlock}>
                   <Text style={[styles.bizLabel, typography.bodySemiBold, { color: colors.mutedForeground }]}>{t('ownerProfile.city')}</Text>
                   <Text style={[styles.bizValue, typography.body, { color: colors.foreground }]}>{business.city}</Text>
+                </View>
+              ) : null}
+              {business.locationLat !== undefined && business.locationLng !== undefined && business.locationLat !== null && business.locationLng !== null ? (
+                <View style={styles.bizInfoBlock}>
+                  <Text style={[styles.bizLabel, typography.bodySemiBold, { color: colors.mutedForeground }]}>{t('ownerProfile.coordinates')}</Text>
+                  <Text style={[styles.bizValue, typography.body, { color: colors.foreground, marginBottom: spacing.sm }]}>
+                    {formatCoordinates(business.locationLat, business.locationLng)}
+                  </Text>
+                  <View style={[styles.mapPreview, { borderColor: colors.border }]}>
+                    <MapView
+                      style={StyleSheet.absoluteFill}
+                      region={{
+                        latitude: business.locationLat,
+                        longitude: business.locationLng,
+                        latitudeDelta: 0.01,
+                        longitudeDelta: 0.01,
+                      }}
+                      pointerEvents="none"
+                    >
+                      <Marker
+                        coordinate={{ latitude: business.locationLat, longitude: business.locationLng }}
+                        tracksViewChanges={false}
+                      >
+                        <View style={styles.markerContainer}>
+                          <Ionicons name="location" size={20} color="#4A5E6A" />
+                        </View>
+                      </Marker>
+                    </MapView>
+                  </View>
                 </View>
               ) : null}
               {business.phone ? (
@@ -840,6 +946,30 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: spacing.md,
+  },
+  coordinatesHelp: {
+    fontSize: typography.sizes.xs,
+    marginTop: -spacing.sm,
+  },
+  mapPreview: {
+    width: '100%',
+    height: 160,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  markerContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
   },
   buttonRow: {
     flexDirection: 'row',

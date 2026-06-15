@@ -681,7 +681,11 @@
     "descriptionPlaceholder": "Brief description of your business",
     "addressPlaceholder": "123 Main St",
     "cityPlaceholder": "Enter your city",
-    "phonePlaceholder": "+90 555 123 4567"
+    "phonePlaceholder": "+90 555 123 4567",
+    "coordinates": "Map Coordinates",
+    "coordinatesPlaceholder": "e.g. 39.871889, 32.659516",
+    "coordinatesHelp": "Paste coordinates from Google Maps (latitude, longitude) to pin your business location on the map.",
+    "coordinatesInvalid": "Enter valid coordinates in the format: latitude, longitude"
   },
   "businessReviews": {
     "title": "Reviews",

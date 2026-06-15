@@ -24,8 +24,8 @@ export interface Business {
   description?: string;
   address?: string;
   city?: string;
-  locationLat?: number;
-  locationLng?: number;
+  locationLat?: number | null;
+  locationLng?: number | null;
   phone?: string;
   licenseDocumentUrl?: string;
   status?: string;
