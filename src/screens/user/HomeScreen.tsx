@@ -26,6 +26,7 @@ import { spacing, typography, borderRadius } from '../../theme/theme';
 import { useAuthStore } from '../../store/authStore';
 import { useNotificationStore, NotificationType } from '../../store/notificationStore';
 import notificationService from '../../services/notificationService';
+import { useBackendNotificationSync } from '../../hooks/useBackendNotificationSync';
 import { calculateDistance } from '../../lib/calculateDistance';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -141,6 +142,9 @@ export const HomeScreen: React.FC = () => {
   const [countdown, setCountdown] = useState(5);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const processedBackendIds = useRef<Set<string>>(new Set());
+
+  // Pick up cross-device booking status changes (e.g. business approves/cancels) in near-real-time
+  useBackendNotificationSync([queryKeys.bookings.customerAll]);
 
   // Poll backend for notifications (cross-device code delivery)
   const { data: backendNotifications = [] } = useQuery({

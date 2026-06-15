@@ -7,15 +7,18 @@ import notificationService from '../services/notificationService';
 import { useAuthStore } from '../store/authStore';
 import { useNotificationStore, NotificationType } from '../store/notificationStore';
 
-// Backend notification types handled by this hook, mapped to their title i18n key.
-const HANDLED_TYPES: Record<string, string> = {
-  new_booking_request: 'notifications.newBookingRequest',
+// Backend notification types handled by this hook, mapped to their title i18n key
+// and the local NotificationType used for in-app display.
+const HANDLED_TYPES: Record<string, { titleKey: string; notificationType: NotificationType }> = {
+  new_booking_request: { titleKey: 'notifications.newBookingRequest', notificationType: 'new_booking_request' },
+  booking_confirmed: { titleKey: 'notifications.bookingConfirmed', notificationType: 'booking_confirmed' },
+  booking_cancelled_by_business: { titleKey: 'notifications.bookingCancelled', notificationType: 'booking_cancelled' },
 };
 
 /**
- * Polls the backend `/notifications` endpoint so owner/employee devices pick up
- * events (e.g. new booking requests) created from another device in near-real-time.
- * Mirrors the cross-device pattern already used for customer service-start codes.
+ * Polls the backend `/notifications` endpoint so customer/owner/employee devices pick up
+ * booking lifecycle events (new requests, approvals, cancellations) created from another
+ * device in near-real-time. Mirrors the cross-device pattern used for service-start codes.
  */
 export function useBackendNotificationSync(invalidateKeys: QueryKey[] = []) {
   const { t } = useTranslation();
@@ -28,7 +31,7 @@ export function useBackendNotificationSync(invalidateKeys: QueryKey[] = []) {
   const { data: backendNotifications = [] } = useQuery({
     queryKey: queryKeys.notifications.forUser,
     queryFn: () => notificationService.getNotifications(),
-    refetchInterval: 5000,
+    refetchInterval: 3000,
     refetchIntervalInBackground: false,
     enabled: !!user && isFocused,
   });
@@ -44,10 +47,11 @@ export function useBackendNotificationSync(invalidateKeys: QueryKey[] = []) {
     unread.forEach((n) => {
       processedIds.current.add(n.id);
       notificationService.markRead(n.id).catch(() => {});
+      const handled = HANDLED_TYPES[n.type];
       addNotificationFromBackend({
         id: n.id,
-        type: n.type as NotificationType,
-        title: t(HANDLED_TYPES[n.type]),
+        type: handled.notificationType,
+        title: t(handled.titleKey),
         body: n.message,
         createdAt: new Date(n.createdAt),
         read: false,

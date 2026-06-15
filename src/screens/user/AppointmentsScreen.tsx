@@ -10,6 +10,7 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../../lib/queryKeys';
+import { useBackendNotificationSync } from '../../hooks/useBackendNotificationSync';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '../../navigation/RootNavigator';
@@ -57,6 +58,9 @@ export const AppointmentsScreen: React.FC = () => {
     enabled: !!user,
     staleTime: 30000,
   });
+
+  // Pick up cross-device booking status changes (e.g. business approves/cancels) in near-real-time
+  useBackendNotificationSync([queryKeys.bookings.customerAll]);
 
   const isRefetchingRef = useRef(false);
   useFocusEffect(
