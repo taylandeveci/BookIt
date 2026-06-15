@@ -338,6 +338,11 @@ export const RootNavigator = () => {
             component={BusinessDetailScreen}
             options={{ title: t('navigation.businessDetails') }}
           />
+          <Stack.Screen
+            name="EditProfile"
+            component={EditProfileScreen}
+            options={{ title: t('navigation.editProfile') }}
+          />
         </>
       ) : user.role === 'EMPLOYEE' ? (
         <>
