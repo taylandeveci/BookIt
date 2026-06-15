@@ -343,7 +343,7 @@ export const BusinessDetailScreen: React.FC = () => {
           <View style={[styles.imageGallery, { backgroundColor: colors.muted, borderRadius: borderRadius.xl }]}>
             <Ionicons name="image-outline" size={40} color={colors.mutedForeground} />
             <Text style={[typography.body, { fontSize: typography.sizes.sm, color: colors.mutedForeground, marginTop: spacing.sm }]}>
-              Fotoğraf yok
+              {t('businessDetail.noPhoto')}
             </Text>
           </View>
         )}

@@ -258,7 +258,7 @@ export const BusinessReviewsScreen: React.FC = () => {
             <Ionicons name="chevron-back" size={24} color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, typography.headingSemiBold, { color: colors.foreground }]}>
-            Reviews
+            {t('businessReviews.title')}
           </Text>
           <View style={styles.placeholderButton} />
         </View>

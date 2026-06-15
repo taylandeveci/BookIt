@@ -288,7 +288,7 @@ export const AppointmentsScreen: React.FC = () => {
         <View style={styles.expiringSoonRow}>
           <Ionicons name="time-outline" size={12} color={colors.secondary} />
           <Text style={[typography.body, { fontSize: typography.sizes.xs, color: colors.secondary }]}>
-            Onay süresi dolmak üzere
+            {t('common.expiringSoon')}
           </Text>
         </View>
       )}

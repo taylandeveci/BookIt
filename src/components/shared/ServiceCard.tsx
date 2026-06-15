@@ -62,9 +62,9 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
       {variant === 'employee' && (
         <View style={{ flexDirection: 'row' }}>
           {isSelected ? (
-            <Button title="Remove" variant="destructive" size="sm" onPress={onToggle} style={{ flex: 1 }} />
+            <Button title={t('common.remove')} variant="destructive" size="sm" onPress={onToggle} style={{ flex: 1 }} />
           ) : (
-            <Button title="Add" variant="primary" size="sm" onPress={onToggle} style={{ flex: 1 }} />
+            <Button title={t('common.add')} variant="primary" size="sm" onPress={onToggle} style={{ flex: 1 }} />
           )}
         </View>
       )}

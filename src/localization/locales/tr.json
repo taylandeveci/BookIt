@@ -6,6 +6,7 @@
     "delete": "Sil",
     "edit": "Düzenle",
     "add": "Ekle",
+    "remove": "Kaldır",
     "confirm": "Onayla",
     "yes": "Evet",
     "no": "Hayır",
@@ -34,7 +35,8 @@
     "disputed": "İtirazlı",
     "approve": "Onayla",
     "reject": "Reddet",
-    "anonymous": "Anonim"
+    "anonymous": "Anonim",
+    "expiringSoon": "Onay süresi dolmak üzere"
   },
   "auth": {
     "title": "BookIT",
@@ -329,7 +331,10 @@
     "locationBanner": "Yakınındaki işletmeleri görmek için konum izni verin",
     "allowLocation": "İzin Ver",
     "lastVisitToday": "Bugün",
-    "lastVisitDays": "{{count}} gün önce"
+    "lastVisitDays": "{{count}} gün önce",
+    "locationPermissionFallback": "Konum izni verilmedi — tüm işletmeler gösteriliyor",
+    "noNearbyBusinesses": "Yakınınızda işletme bulunamadı",
+    "viewAllInSearch": "Arama sayfasından tüm işletmeleri görebilirsiniz"
   },
   "search": {
     "title": "Ara",
@@ -365,6 +370,7 @@
   },
   "businessDetail": {
     "about": "Hakkında",
+    "noPhoto": "Fotoğraf yok",
     "services": "Hizmetler",
     "reviews": "Yorumlar",
     "bookAppointment": "Randevu Al",

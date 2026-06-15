@@ -6,6 +6,7 @@
     "delete": "Delete",
     "edit": "Edit",
     "add": "Add",
+    "remove": "Remove",
     "confirm": "Confirm",
     "yes": "Yes",
     "no": "No",
@@ -34,7 +35,8 @@
     "disputed": "Disputed",
     "approve": "Approve",
     "reject": "Reject",
-    "anonymous": "Anonymous"
+    "anonymous": "Anonymous",
+    "expiringSoon": "Approval window closing soon"
   },
   "auth": {
     "title": "BookIT",
@@ -329,7 +331,10 @@
     "locationBanner": "Allow location to see businesses near you",
     "allowLocation": "Allow",
     "lastVisitToday": "Today",
-    "lastVisitDays": "{{count}} days ago"
+    "lastVisitDays": "{{count}} days ago",
+    "locationPermissionFallback": "Location permission not granted — showing all businesses",
+    "noNearbyBusinesses": "No businesses found near you",
+    "viewAllInSearch": "You can view all businesses from the search page"
   },
   "search": {
     "title": "Search",
@@ -365,6 +370,7 @@
   },
   "businessDetail": {
     "about": "About",
+    "noPhoto": "No photo available",
     "services": "Services",
     "reviews": "Reviews",
     "bookAppointment": "Book Appointment",

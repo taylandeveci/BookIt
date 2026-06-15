@@ -444,7 +444,7 @@ export const HomeScreen: React.FC = () => {
             </Text>
             {nearbyLocationFallback ? (
               <Text style={[typography.body, styles.nearbyFallbackText, { color: colors.mutedForeground }]}>
-                Konum izni verilmedi — tüm işletmeler gösteriliyor
+                {t('home.locationPermissionFallback')}
               </Text>
             ) : null}
           </View>
@@ -465,10 +465,10 @@ export const HomeScreen: React.FC = () => {
             <View style={styles.nearbyEmpty}>
               <Ionicons name="location-outline" size={40} color={colors.mutedForeground} />
               <Text style={[typography.body, styles.nearbyEmptyText, { color: colors.mutedForeground, fontSize: typography.sizes.sm }]}>
-                Yakınınızda işletme bulunamadı
+                {t('home.noNearbyBusinesses')}
               </Text>
               <Text style={[typography.body, styles.nearbyEmptyText, { color: colors.mutedForeground, fontSize: typography.sizes.xs }]}>
-                Arama sayfasından tüm işletmeleri görebilirsiniz
+                {t('home.viewAllInSearch')}
               </Text>
             </View>
           ) : (
