@@ -46,8 +46,6 @@ export const AppointmentsScreen: React.FC = () => {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<'active' | 'past'>('active');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  // Track which bookings have had arrival confirmation submitted this session
-  const [arrivalConfirmed, setArrivalConfirmed] = useState<Record<string, boolean>>({});
 
   const { data: appointments = [], isLoading: loading } = useQuery({
     queryKey: queryKeys.bookings.customerAll,
@@ -133,24 +131,6 @@ export const AppointmentsScreen: React.FC = () => {
     return deadline.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const ARRIVAL_WINDOW_MS = 15 * 60 * 1000;
-
-  const isInArrivalWindow = (item: AppointmentWithDetails): boolean => {
-    if (!item.startTime) return false;
-    const start = new Date(item.startTime).getTime();
-    const now = Date.now();
-    return now >= start && now <= start + ARRIVAL_WINDOW_MS;
-  };
-
-  const handleConfirmArrival = async (item: AppointmentWithDetails, arrived: boolean) => {
-    try {
-      await appointmentService.confirmArrival(item.id, arrived);
-      setArrivalConfirmed((prev) => ({ ...prev, [item.id]: true }));
-      queryClient.invalidateQueries({ queryKey: queryKeys.bookings.customerAll });
-    } catch (e: any) {
-      setToast({ message: e.message || t('appointments.confirmArrivalError'), type: 'error' });
-    }
-  };
 
 
   const getStatusLabel = (status: Appointment['status']): string => {
@@ -293,54 +273,6 @@ export const AppointmentsScreen: React.FC = () => {
         </View>
       )}
 
-      {/* Arrival confirmation prompt — shown within 15-min window for APPROVED/IN_PROGRESS */}
-      {(item.status === 'APPROVED' || item.status === 'IN_PROGRESS') &&
-        isInArrivalWindow(item) &&
-        !arrivalConfirmed[item.id] &&
-        item.customerArrivalConfirmed === null && (
-          <View style={styles.arrivalPrompt}>
-            <Text style={[typography.heading, { color: colors.foreground, fontSize: typography.sizes.lg }]}>
-              {t('appointments.arrivalQuestion')}
-            </Text>
-            <Text style={[typography.body, { color: colors.mutedForeground, fontSize: typography.sizes.sm, marginTop: 2 }]}>
-              {item.service?.name} · {item.startTime ? new Date(item.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-            </Text>
-            <View style={styles.arrivalButtons}>
-              <Button
-                title={t('appointments.arrivalYes')}
-                variant="primary"
-                size="sm"
-                style={{ flex: 1 }}
-                onPress={() => handleConfirmArrival(item, true)}
-              />
-              <Button
-                title={t('appointments.arrivalNo')}
-                variant="outline"
-                size="sm"
-                style={{ flex: 1, borderColor: colors.destructive }}
-                textStyle={{ color: colors.destructive }}
-                onPress={() => handleConfirmArrival(item, false)}
-              />
-            </View>
-          </View>
-        )}
-
-      {(item.status === 'APPROVED' || item.status === 'IN_PROGRESS') &&
-        isInArrivalWindow(item) &&
-        (arrivalConfirmed[item.id] || item.customerArrivalConfirmed !== null) && (
-          <Text style={[typography.body, { fontSize: typography.sizes.xs, color: colors.mutedForeground, marginTop: spacing.xs }]}>
-            {t('appointments.responseRecorded')}
-          </Text>
-        )}
-
-      {item.status === 'DISPUTED' && (
-        <View style={styles.disputedNote}>
-          <Ionicons name="alert-circle-outline" size={12} color={colors.mutedForeground} />
-          <Text style={[typography.body, { fontSize: typography.sizes.xs, color: colors.mutedForeground, flex: 1 }]}>
-            {t('appointments.disputedNote')}
-          </Text>
-        </View>
-      )}
 
       {item.rejectionReason && (
         <Text
@@ -378,9 +310,7 @@ export const AppointmentsScreen: React.FC = () => {
           </View>
         )}
 
-        {(item.status === 'COMPLETED' ||
-          item.status === 'DISPUTED' ||
-          (item.status === 'NO_SHOW' && item.customerArrivalConfirmed !== false)) && (
+        {item.status === 'COMPLETED' && (
           item.review ? (
             <View style={styles.reviewSubmittedRow}>
               <Ionicons name="checkmark-circle" size={14} color={colors.mutedForeground} />
@@ -530,25 +460,6 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     padding: spacing.xl,
-  },
-  arrivalPrompt: {
-    marginTop: spacing.sm,
-    padding: spacing.md,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#4A5E6A33',
-    backgroundColor: '#4A5E6A0A',
-    gap: spacing.sm,
-  },
-  arrivalButtons: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  disputedNote: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 4,
-    marginTop: spacing.xs,
   },
   expiringSoonRow: {
     flexDirection: 'row',

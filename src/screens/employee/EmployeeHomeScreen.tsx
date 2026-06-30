@@ -47,14 +47,6 @@ export const EmployeeHomeScreen: React.FC = () => {
     }, [queryClient])
   );
 
-  const ARRIVAL_WINDOW_MS = 15 * 60 * 1000;
-
-  const isInArrivalWindow = (startTimeIso: string): boolean => {
-    const start = new Date(startTimeIso).getTime();
-    const now = Date.now();
-    return now >= start && now <= start + ARRIVAL_WINDOW_MS;
-  };
-
   const invalidateAfterMutation = (bookingDate: string) => {
     queryClient.invalidateQueries({ queryKey: queryKeys.bookings.employeeAll });
     queryClient.invalidateQueries({ queryKey: queryKeys.bookings.employeeByDate(bookingDate) });
@@ -75,18 +67,6 @@ export const EmployeeHomeScreen: React.FC = () => {
     }
   };
 
-  const handleNoShow = async (id: string, bookingDate: string) => {
-    setActionLoading(id + '_noshow');
-    try {
-      await employeeService.noShowAppointment(id);
-      invalidateAfterMutation(bookingDate);
-    } catch (e: any) {
-      Alert.alert(t('common.error'), e.message || t('employeeHome.noShowError'));
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
   const handleComplete = async (id: string, bookingDate: string) => {
     setActionLoading(id + '_complete');
     try {
@@ -101,15 +81,12 @@ export const EmployeeHomeScreen: React.FC = () => {
 
   const renderItem = ({ item }: { item: any }) => {
     const bookingDate = item.startTime ? item.startTime.slice(0, 10) : '';
-    const inWindow = isInArrivalWindow(item.startTime);
     const canStart = !item.actualStartTime &&
       item.status !== 'COMPLETED' &&
       item.status !== 'CANCELLED' &&
       item.status !== 'NO_SHOW' &&
       item.status !== 'DISPUTED';
-    const canNoShow = item.status === 'APPROVED' && inWindow && !item.businessArrivalConfirmed;
     const canComplete = item.actualStartTime && !item.actualEndTime && item.status === 'IN_PROGRESS';
-    const showWindowLabel = canNoShow || (canStart && inWindow && !item.businessArrivalConfirmed);
 
     return (
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -152,23 +129,6 @@ export const EmployeeHomeScreen: React.FC = () => {
             </TouchableOpacity>
           )}
 
-          {canNoShow && (
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: '#ef4444' }]}
-              onPress={() => handleNoShow(item.id, bookingDate)}
-              disabled={!!actionLoading}
-            >
-              {actionLoading === item.id + '_noshow' ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="person-remove-outline" size={14} color="#fff" />
-                  <Text style={styles.actionBtnText}>{t('common.noShow')}</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          )}
-
           {canComplete && (
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: '#22c55e' }]}
@@ -187,14 +147,6 @@ export const EmployeeHomeScreen: React.FC = () => {
           )}
         </View>
 
-        {showWindowLabel && (
-          <View style={styles.windowLabel}>
-            <Ionicons name="time-outline" size={12} color={colors.secondary} />
-            <Text style={[typography.body, { fontSize: 11, color: colors.secondary }]}>
-              {t('employeeHome.confirmationWindowOpen')}
-            </Text>
-          </View>
-        )}
       </View>
     );
   };
