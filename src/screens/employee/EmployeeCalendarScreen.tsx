@@ -281,7 +281,7 @@ export const EmployeeCalendarScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['bottom']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       {/* Calendar header */}
       <View style={[styles.calendarContainer, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <Animated.View style={{ height: heightAnim, overflow: 'hidden' }}>

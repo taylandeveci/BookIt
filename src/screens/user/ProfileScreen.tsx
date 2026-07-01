@@ -25,6 +25,7 @@ import { spacing, typography, borderRadius } from '../../theme/theme';
 import { Appointment, Business, Service } from '../../types';
 import { setAppLanguage, getCurrentLanguage } from '../../localization/i18n';
 import { useNotificationStore } from '../../store/notificationStore';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type NavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<UserTabParamList, 'Profile'>,
@@ -37,7 +38,7 @@ type AppointmentWithDetails = Appointment & {
 };
 
 export const ProfileScreen: React.FC = () => {
-  const { colors } = useTheme();
+  const { colors, shadows } = useTheme();
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const user = useAuthStore((state) => state.user);
@@ -157,7 +158,9 @@ export const ProfileScreen: React.FC = () => {
   }
 
   return (
-    <ScrollView
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
+      <ScrollView
+      showsVerticalScrollIndicator={false}
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.content}
     >
@@ -185,9 +188,9 @@ export const ProfileScreen: React.FC = () => {
       <Card style={styles.card}>
         <View style={styles.profileHeader}>
           {user.avatar ? (
-            <ImageWithFallback uri={user.avatar} style={styles.avatarContainer} iconSize={48} />
+            <ImageWithFallback uri={user.avatar} style={[styles.avatarContainer, shadows.md]} iconSize={48} />
           ) : (
-            <View style={[styles.avatarContainer, { backgroundColor: colors.muted }]}>
+            <View style={[styles.avatarContainer, { backgroundColor: colors.muted }, shadows.md]}>
               <Ionicons name="person" size={48} color={colors.mutedForeground} />
             </View>
           )}
@@ -416,7 +419,7 @@ export const ProfileScreen: React.FC = () => {
           {t('profile.title')}
         </Text>
 
-        <View style={styles.settingRow}>
+        <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
           <View style={styles.settingLabel}>
             <Text
               style={[
@@ -444,7 +447,7 @@ export const ProfileScreen: React.FC = () => {
           />
         </View>
 
-        <View style={styles.settingRow}>
+        <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
           <View style={styles.settingLabel}>
             <Text
               style={[
@@ -495,7 +498,7 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </View>
 
-        <View style={styles.settingRow}>
+        <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
           <View style={styles.settingLabel}>
             <Text
               style={[
@@ -562,6 +565,7 @@ export const ProfileScreen: React.FC = () => {
         )}
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 };
 

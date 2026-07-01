@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TextInput as RNTextInput,
+  TouchableOpacity,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -15,7 +16,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../../lib/queryKeys';
 import { useTheme } from '../../theme/useTheme';
-import { Button, RatingStars, Card, Toast } from '../../components';
+import { Button, RatingStars, Card, Toast, ScreenHeader } from '../../components';
 import { spacing, typography, borderRadius } from '../../theme/theme';
 import { containsProfanity } from '../../lib/filterProfanity';
 import { useNotificationStore } from '../../store/notificationStore';
@@ -34,6 +35,7 @@ export const ReviewScreen: React.FC = () => {
   const addNotification = useNotificationStore((s) => s.addNotification);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
+  const [employeeSatisfaction, setEmployeeSatisfaction] = useState<number | null>(null);
   const [ratingError, setRatingError] = useState('');
   const [commentError, setCommentError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -58,7 +60,7 @@ export const ReviewScreen: React.FC = () => {
         user.id,
         route.params.appointmentId,
         route.params.businessId,
-        { rating, comment }
+        { rating, comment, employeeSatisfaction }
       );
 
       setToast({ message: t('reviews.submitSuccess'), type: 'success' });
@@ -95,6 +97,7 @@ export const ReviewScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScreenHeader title={t('navigation.writeReview')} />
       {toast && (
         <Toast
           message={toast.message}
@@ -103,7 +106,9 @@ export const ReviewScreen: React.FC = () => {
         />
       )}
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <Card style={styles.card}>
           {route.params.businessName ? (
             <Text style={[styles.title, typography.heading, { color: colors.foreground }]}>
@@ -146,6 +151,41 @@ export const ReviewScreen: React.FC = () => {
                 {ratingError}
               </Text>
             ) : null}
+          </View>
+
+          <View style={styles.satisfactionSection}>
+            <Text style={[styles.label, typography.bodySemiBold, { color: colors.foreground }]}>
+              {t('reviews.employeeSatisfaction')}
+            </Text>
+            <Text style={[typography.body, { color: colors.mutedForeground, fontSize: typography.sizes.sm, marginBottom: spacing.sm }]}>
+              {t('reviews.employeeSatisfactionHint')}
+            </Text>
+            <View style={styles.satisfactionChips}>
+              {[1, 2, 3, 4, 5].map((score) => {
+                const selected = employeeSatisfaction === score;
+                return (
+                  <TouchableOpacity
+                    key={score}
+                    style={[
+                      styles.satisfactionChip,
+                      { borderColor: selected ? colors.primary : colors.border },
+                      selected && { backgroundColor: colors.primary },
+                    ]}
+                    onPress={() => setEmployeeSatisfaction(selected ? null : score)}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        typography.bodyBold,
+                        { color: selected ? '#fff' : colors.foreground, fontSize: typography.sizes.md },
+                      ]}
+                    >
+                      {score}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
 
           <View style={styles.commentSection}>
@@ -224,6 +264,21 @@ const styles = StyleSheet.create({
   label: {
     fontSize: typography.sizes.md,
     marginBottom: spacing.md,
+  },
+  satisfactionSection: {
+    marginBottom: spacing.xl,
+  },
+  satisfactionChips: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  satisfactionChip: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   commentSection: {
     marginBottom: spacing.xl,

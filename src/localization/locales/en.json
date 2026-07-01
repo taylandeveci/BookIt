@@ -140,7 +140,9 @@
     "appointmentsCenterLabel": "Total",
     "noAppointmentsInPeriod": "No appointments in this period",
     "totalRevenue": "Total Revenue",
+    "todayExpected": "Today Expected",
     "staffPerformance": "Staff Performance",
+    "satisfaction": "Satisfaction",
     "noBusiness": "No Business Found",
     "noBusinessDesc": "You don't have any registered businesses yet",
     "legendCompleted": "Completed",
@@ -165,6 +167,7 @@
     "approveConfirm": "Approve this appointment?",
     "rejectConfirm": "Reject this appointment?",
     "approveSuccess": "Appointment approved",
+    "completeSuccess": "Appointment completed",
     "rejectSuccess": "Appointment rejected",
     "approveError": "Failed to approve appointment",
     "rejectError": "Failed to reject appointment",
@@ -180,7 +183,8 @@
     "duration": "Duration",
     "approveRequest": "Approve Request",
     "dateNotSet": "Date not set",
-    "timeNotSet": "Time not set"
+    "timeNotSet": "Time not set",
+    "ago": "ago"
   },
   "employees": {
     "title": "Employees",
@@ -216,7 +220,14 @@
     "reject": "Reject",
     "approveSuccess": "Employee approved",
     "rejectSuccess": "Employee rejected",
-    "noPending": "No pending employees"
+    "noPending": "No pending employees",
+    "inactive": "Inactive",
+    "deactivate": "Deactivate",
+    "activate": "Activate",
+    "deactivateConfirm": "Deactivate {{name}}? They will no longer receive new bookings.",
+    "activateConfirm": "Reactivate {{name}}?",
+    "deactivateSuccess": "Employee deactivated",
+    "activateSuccess": "Employee activated"
   },
   "services": {
     "title": "Services",
@@ -248,7 +259,8 @@
     "addServiceBtn": "Add Service",
     "priceLabel": "Price",
     "priceError": "Price must be greater than 0",
-    "durationError": "Duration must be greater than 0"
+    "durationError": "Duration must be greater than 0",
+    "bookings": "bookings"
   },
   "profile": {
     "title": "Profile",
@@ -284,6 +296,7 @@
     "recentAppointments": "Recent Appointments",
     "active": "Active",
     "past": "Past",
+    "search": "Search by business, service or staff...",
     "loginAgain": "Please log in again",
     "guestUser": "User",
     "loadError": "Failed to load appointments"
@@ -358,6 +371,7 @@
     "distanceUnavailable": "Distance unavailable",
     "resultCount": "{{count}} business found",
     "clearFilters": "Clear Filters",
+    "availableToday": "Available Today",
     "filterNoResults": "No businesses match your filters",
     "categories": "Categories",
     "chipBarber": "Barber",
@@ -376,6 +390,7 @@
     "bookAppointment": "Book Appointment",
     "viewAllReviews": "View All Reviews",
     "noServices": "No services available",
+    "noEmployees": "No active employees at this business",
     "noReviews": "No reviews yet",
     "openNow": "Open Now",
     "closed": "Closed",
@@ -393,6 +408,7 @@
     "bookingConfirmed": "Appointment booked!",
     "bookingSuccess": "Appointment requested successfully!",
     "bookingError": "Booking failed",
+    "slotTaken": "This slot is no longer available, please select another time",
     "loginRequired": "Login Required",
     "loginRequiredDesc": "Please login to book an appointment",
     "bookingStepsIncomplete": "Please complete all booking steps",
@@ -464,6 +480,17 @@
     "expiredNote": "Expired — not confirmed in time",
     "reviewSubmitted": "Review Submitted"
   },
+  "appointmentDetail": {
+    "title": "Appointment Details",
+    "business": "Business",
+    "dateTime": "Date & Time",
+    "service": "Service",
+    "employee": "Staff",
+    "upcoming": "Upcoming Appointment",
+    "hoursLeft": "{{count}} hours left",
+    "minutesLeft": "{{count}} minutes left",
+    "tomorrow": "Tomorrow"
+  },
   "reviews": {
     "title": "Reviews",
     "writeReview": "Write Review",
@@ -492,7 +519,9 @@
     "commentRequired": "Please write a comment",
     "awaitingApproval": "Review submitted! Awaiting business approval.",
     "basedOn": "Based on {{count}} reviews",
-    "allReviews": "All Reviews"
+    "allReviews": "All Reviews",
+    "employeeSatisfaction": "Staff satisfaction",
+    "employeeSatisfactionHint": "Optional — only visible to the business owner"
   },
   "status": {
     "pending": "Pending",
@@ -545,7 +574,8 @@
     "decline": "Decline",
     "todaySchedule": "Today's Schedule",
     "noPendingRequests": "No pending requests",
-    "noAppointmentsToday": "No appointments today"
+    "noAppointmentsToday": "No appointments today",
+    "todayTitle": "Today's Appointments"
   },
   "employeeCalendar": {
     "title": "Calendar",

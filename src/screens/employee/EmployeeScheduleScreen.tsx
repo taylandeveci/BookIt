@@ -68,8 +68,8 @@ const PickerColumn: React.FC<PickerColumnProps> = ({ values, selectedIdx, onSele
   return (
     <View style={{ height: ITEM_H * VISIBLE, width: 72, overflow: 'hidden' }}>
       <ScrollView
-        ref={scrollRef}
         showsVerticalScrollIndicator={false}
+        ref={scrollRef}
         snapToInterval={ITEM_H}
         decelerationRate="fast"
         contentContainerStyle={{ paddingVertical: ITEM_H * PAD }}
@@ -281,7 +281,7 @@ export const EmployeeScheduleScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['bottom']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {schedule.map((day) => (
           <Card key={day.dayOfWeek} style={styles.dayCard}>

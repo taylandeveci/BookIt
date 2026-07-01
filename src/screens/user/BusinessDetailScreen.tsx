@@ -114,6 +114,8 @@ export const BusinessDetailScreen: React.FC = () => {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const [photoIndex, setPhotoIndex] = useState(0);
+  const [isFavorited, setIsFavorited] = useState<boolean | null>(null);
+  const [favLoading, setFavLoading] = useState(false);
   const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 });
   const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
     if (viewableItems.length > 0) setPhotoIndex(viewableItems[0].index ?? 0);
@@ -124,6 +126,28 @@ export const BusinessDetailScreen: React.FC = () => {
     queryFn: () => businessService.getBusiness(businessId),
     staleTime: 60000,
   });
+
+  // Sync isFavorited once business loads (backend returns this flag)
+  React.useEffect(() => {
+    if (business && isFavorited === null) {
+      setIsFavorited(!!(business as any).isFavorited);
+    }
+  }, [business]);
+
+  const handleToggleFavorite = async () => {
+    if (!user) return;
+    setFavLoading(true);
+    const prev = isFavorited;
+    setIsFavorited(!prev); // optimistic
+    try {
+      await businessService.toggleFavorite(businessId);
+      queryClient.invalidateQueries({ queryKey: ['businesses', 'favorites'] });
+    } catch {
+      setIsFavorited(prev); // revert
+    } finally {
+      setFavLoading(false);
+    }
+  };
 
   const { data: employees = [], isLoading: employeesLoading } = useQuery({
     queryKey: queryKeys.businesses.employees(businessId),
@@ -182,13 +206,8 @@ export const BusinessDetailScreen: React.FC = () => {
           selectedService
         );
         return Array.isArray(slots) ? slots : [];
-      } catch (error: any) {
-        const defaultSlots: TimeSlot[] = [];
-        for (let hour = 9; hour <= 17; hour++) {
-          defaultSlots.push({ time: `${hour}:00`, available: true });
-          defaultSlots.push({ time: `${hour}:30`, available: true });
-        }
-        return defaultSlots;
+      } catch {
+        return [];
       }
     },
     enabled: !!selectedEmployee && !!selectedService && !!selectedDate,
@@ -274,7 +293,13 @@ export const BusinessDetailScreen: React.FC = () => {
         navigation.navigate('UserTabs');
       }, 1500);
     } catch (error: any) {
-      setToast({ message: error.message || t('businessDetail.bookingError'), type: 'error' });
+      if ((error as any).status === 409) {
+        setSelectedTime('');
+        queryClient.invalidateQueries({ queryKey: queryKeys.businesses.timeSlots(businessId, dateStr, selectedEmployee ?? '', selectedService ?? '') });
+        setToast({ message: t('businessDetail.slotTaken'), type: 'error' });
+      } else {
+        setToast({ message: error.message || t('businessDetail.bookingError'), type: 'error' });
+      }
     } finally {
       setBookingLoading(false);
     }
@@ -308,7 +333,34 @@ export const BusinessDetailScreen: React.FC = () => {
           onHide={() => setToast(null)}
         />
       )}
-      
+
+      {/* Floating header row — back + favorite */}
+      <View style={[styles.floatingHeader, { top: insets.top + 8 }]} pointerEvents="box-none">
+        <TouchableOpacity
+          style={[styles.floatingBtn, { backgroundColor: colors.card }, shadows.sm]}
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="chevron-back" size={22} color={colors.foreground} />
+        </TouchableOpacity>
+        {user ? (
+          <TouchableOpacity
+            style={[styles.floatingBtn, { backgroundColor: colors.card }, shadows.sm]}
+            onPress={handleToggleFavorite}
+            disabled={favLoading}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={isFavorited ? 'heart' : 'heart-outline'}
+              size={22}
+              color={isFavorited ? colors.destructive : colors.foreground}
+            />
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Photo gallery — base64 storage; migrate to Supabase Storage URLs in a future pass */}
         {business.media && business.media.length > 0 ? (
@@ -325,7 +377,7 @@ export const BusinessDetailScreen: React.FC = () => {
               windowSize={5}
               initialNumToRender={6}
               renderItem={({ item }) => (
-                <GalleryImage uri={item.url} width={SCREEN_WIDTH} height={220} />
+                <GalleryImage uri={item.url} width={SCREEN_WIDTH} height={260} />
               )}
             />
             {business.media.length > 1 && (
@@ -340,11 +392,12 @@ export const BusinessDetailScreen: React.FC = () => {
             )}
           </View>
         ) : (
-          <View style={[styles.imageGallery, { backgroundColor: colors.muted, borderRadius: borderRadius.xl }]}>
-            <Ionicons name="image-outline" size={40} color={colors.mutedForeground} />
-            <Text style={[typography.body, { fontSize: typography.sizes.sm, color: colors.mutedForeground, marginTop: spacing.sm }]}>
-              {t('businessDetail.noPhoto')}
-            </Text>
+          <View style={[styles.imageGallery, { backgroundColor: colors.muted }]}>
+            <View style={[styles.placeholderInitial, { backgroundColor: colors.primary + '20' }]}>
+              <Text style={[typography.heading, { fontSize: 52, color: colors.primary, opacity: 0.7 }]}>
+                {business.name.charAt(0).toUpperCase()}
+              </Text>
+            </View>
           </View>
         )}
 
@@ -457,18 +510,55 @@ export const BusinessDetailScreen: React.FC = () => {
             >
               {t('businessDetail.step1Staff')}
             </Text>
-            <View style={styles.optionsGrid}>
-              {(Array.isArray(employees) ? employees : []).map((emp) => (
-                <Chip
-                  key={emp.id}
-                  label={emp.fullName}
-                  selected={selectedEmployee === emp.id}
-                  onPress={() => {
-                    setSelectedEmployee(emp.id);
-                    setBookingStep(Math.max(bookingStep, 1));
-                  }}
-                />
-              ))}
+            {Array.isArray(employees) && employees.length === 0 && (
+              <Text style={[typography.body, { color: colors.mutedForeground, fontSize: typography.sizes.sm, marginBottom: spacing.md }]}>
+                {t('businessDetail.noEmployees')}
+              </Text>
+            )}
+            <View style={styles.employeeGrid}>
+              {(Array.isArray(employees) ? employees : []).map((emp) => {
+                const selected = selectedEmployee === emp.id;
+                return (
+                  <TouchableOpacity
+                    key={emp.id}
+                    style={[
+                      styles.employeeCard,
+                      { backgroundColor: colors.card, borderColor: selected ? colors.primary : colors.border },
+                      selected && { borderWidth: 2 },
+                    ]}
+                    onPress={() => {
+                      setSelectedEmployee(emp.id);
+                      setSelectedService(null);
+                      setBookingStep(Math.max(bookingStep, 1));
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.empAvatar, { backgroundColor: selected ? colors.primary : colors.muted }]}>
+                      {emp.photoUrl ? (
+                        <Image source={{ uri: emp.photoUrl }} style={styles.empAvatarImg} />
+                      ) : (
+                        <Text style={[typography.bodyBold, { color: selected ? '#fff' : colors.mutedForeground, fontSize: 18 }]}>
+                          {emp.fullName?.charAt(0)?.toUpperCase() ?? '?'}
+                        </Text>
+                      )}
+                    </View>
+                    <Text
+                      style={[typography.bodySemiBold, { color: colors.foreground, fontSize: 13, textAlign: 'center', marginTop: spacing.xs }]}
+                      numberOfLines={2}
+                    >
+                      {emp.fullName}
+                    </Text>
+                    {emp.specialization ? (
+                      <Text
+                        style={[typography.body, { color: colors.mutedForeground, fontSize: 11, textAlign: 'center' }]}
+                        numberOfLines={1}
+                      >
+                        {emp.specialization}
+                      </Text>
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             {/* Step 2: Select Service */}
@@ -483,6 +573,11 @@ export const BusinessDetailScreen: React.FC = () => {
                 >
                   {t('businessDetail.step2Service')}
                 </Text>
+                {Array.isArray(displayedServices) && displayedServices.length === 0 && (
+                  <Text style={[typography.body, { color: colors.mutedForeground, fontSize: typography.sizes.sm, marginBottom: spacing.md }]}>
+                    {t('businessDetail.noServices')}
+                  </Text>
+                )}
                 <View style={styles.servicesList}>
                   {(Array.isArray(displayedServices) ? displayedServices : []).map((svc) => (
                     <TouchableOpacity
@@ -850,11 +945,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   imageGallery: {
-    height: 220,
+    width: SCREEN_WIDTH,
+    height: 260,
     justifyContent: 'center',
     alignItems: 'center',
-    margin: spacing.xl,
-    marginBottom: spacing.md,
+  },
+  placeholderInitial: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   dotRow: {
     flexDirection: 'row',
@@ -933,6 +1033,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
+  employeeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  employeeCard: {
+    width: 90,
+    alignItems: 'center',
+    padding: spacing.sm,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 4,
+  },
+  empAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  empAvatarImg: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+  },
   servicesList: {
     marginBottom: spacing.md,
   },
@@ -975,6 +1102,22 @@ const styles = StyleSheet.create({
   mapModalLoading: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  floatingHeader: {
+    position: 'absolute',
+    left: spacing.md,
+    right: spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    zIndex: 20,
+    pointerEvents: 'box-none',
+  },
+  floatingBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: borderRadius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   mapCloseBtn: {
     position: 'absolute',

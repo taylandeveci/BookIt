@@ -24,6 +24,7 @@ import { ReviewScreen } from '../screens/user/ReviewScreen';
 import { ChangePasswordScreen } from '../screens/user/ChangePasswordScreen';
 import { EditProfileScreen } from '../screens/user/EditProfileScreen';
 import { BusinessReviewsScreen } from '../screens/user/BusinessReviewsScreen';
+import { AppointmentDetailScreen } from '../screens/user/AppointmentDetailScreen';
 
 // Employee Screens
 import { EmployeeDashboardScreen } from '../screens/employee/EmployeeDashboardScreen';
@@ -53,6 +54,7 @@ export type RootStackParamList = {
   Notifications: undefined;
   OwnerReviews: { businessId: string };
   BusinessDetail: { businessId: string };
+  AppointmentDetail: { appointmentId: string };
   Review: { appointmentId: string; businessId: string; businessName?: string; serviceName?: string; businessOwnerId?: string };
   ChangePassword: undefined;
   EditProfile: undefined;
@@ -106,10 +108,7 @@ const UserTabs = () => {
           backgroundColor: colors.card,
           borderTopColor: colors.border,
         },
-        headerStyle: {
-          backgroundColor: colors.background,
-        },
-        headerTintColor: colors.foreground,
+        headerShown: false,
       }}
     >
       <UserTab.Screen
@@ -160,8 +159,7 @@ const EmployeeTabs = () => {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
         tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.border },
-        headerStyle: { backgroundColor: colors.background },
-        headerTintColor: colors.foreground,
+        headerShown: false,
       }}
     >
       <EmployeeTab.Screen
@@ -226,10 +224,7 @@ const OwnerTabs = () => {
           backgroundColor: colors.card,
           borderTopColor: colors.border,
         },
-        headerStyle: {
-          backgroundColor: colors.background,
-        },
-        headerTintColor: colors.foreground,
+        headerShown: false,
       }}
     >
       <OwnerTab.Screen
@@ -336,12 +331,12 @@ export const RootNavigator = () => {
           <Stack.Screen
             name="BusinessDetail"
             component={BusinessDetailScreen}
-            options={{ title: t('navigation.businessDetails') }}
+            options={{ headerShown: false }}
           />
           <Stack.Screen
             name="EditProfile"
             component={EditProfileScreen}
-            options={{ title: t('navigation.editProfile') }}
+            options={{ headerShown: false }}
           />
         </>
       ) : user.role === 'EMPLOYEE' ? (
@@ -374,7 +369,7 @@ export const RootNavigator = () => {
           <Stack.Screen
             name="EmployeeEditProfile"
             component={EmployeeEditProfileScreen}
-            options={{ title: t('navigation.editProfile') }}
+            options={{ headerShown: false }}
           />
           <Stack.Screen
             name="Notifications"
@@ -392,22 +387,27 @@ export const RootNavigator = () => {
           <Stack.Screen
             name="BusinessDetail"
             component={BusinessDetailScreen}
-            options={{ title: t('navigation.businessDetails') }}
+            options={{ headerShown: false }}
           />
           <Stack.Screen
             name="Review"
             component={ReviewScreen}
-            options={{ title: t('navigation.writeReview') }}
+            options={{ headerShown: false }}
           />
           <Stack.Screen
             name="ChangePassword"
             component={ChangePasswordScreen}
-            options={{ title: t('navigation.changePassword') }}
+            options={{ headerShown: false }}
           />
           <Stack.Screen
             name="EditProfile"
             component={EditProfileScreen}
-            options={{ title: t('navigation.editProfile') }}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="AppointmentDetail"
+            component={AppointmentDetailScreen}
+            options={{ headerShown: false }}
           />
           <Stack.Screen
             name="BusinessReviews"

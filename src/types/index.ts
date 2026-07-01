@@ -41,6 +41,7 @@ export interface Business {
   cancellationWindowMinutes?: number;
   pendingBookingTTLHours?: number;
   tags?: string[];
+  isFavorited?: boolean;
 }
 
 export interface PendingEmployee {
@@ -55,6 +56,7 @@ export interface Employee {
   id: string;
   businessId: string;
   fullName: string;
+  specialization?: string;
   photoUrl?: string;
   isActive?: boolean;
   createdAt?: string;
@@ -70,9 +72,10 @@ export interface Service {
   durationMin: number; // in minutes
   isActive?: boolean;
   createdAt?: string;
+  bookingCount?: number;
 }
 
-export type AppointmentStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'COMPLETED' | 'IN_PROGRESS' | 'NO_SHOW' | 'DISPUTED';
+export type AppointmentStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'COMPLETED' | 'IN_PROGRESS' | 'NO_SHOW';
 
 export interface Appointment {
   id: string;
@@ -175,6 +178,7 @@ export interface ServiceFormData {
 export interface ReviewFormData {
   rating: number;
   comment: string;
+  employeeSatisfaction?: number | null;
 }
 
 export interface BusinessMedia {
@@ -189,4 +193,5 @@ export interface FilterOptions {
   maxDistance?: number;
   search?: string;
   serviceName?: string;
+  availableToday?: boolean;
 }

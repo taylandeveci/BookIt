@@ -54,7 +54,15 @@ export const ownerService = {
     await apiClient.delete(`/owner/employees/${employeeId}`);
   },
 
+  async toggleActiveEmployee(employeeId: string): Promise<Employee> {
+    return await apiClient.patch<Employee>(`/owner/employees/${employeeId}/toggle-active`);
+  },
+
   // Service Management
+  async getOwnerServices(): Promise<Service[]> {
+    return await apiClient.get<Service[]>('/owner/services');
+  },
+
   async createService(businessId: string, data: Partial<Service>): Promise<Service> {
     try {
       const result = await apiClient.post<Service>('/owner/services', {
@@ -126,5 +134,10 @@ export const ownerService = {
 
   async rejectReview(reviewId: string, reason: string): Promise<any> {
     return await apiClient.post(`/owner/reviews/${reviewId}/reject`, { reason });
+  },
+
+  async getStaffSatisfaction(): Promise<Array<{ employeeId: string; avgSatisfaction: number; reviewCount: number }>> {
+    const data = await apiClient.get<any>('/owner/staff-satisfaction');
+    return Array.isArray(data) ? data : [];
   },
 };

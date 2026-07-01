@@ -163,30 +163,37 @@ class ApiClient {
     );
   }
 
-  private handleError(error: AxiosError): Error {
+  private handleError(error: AxiosError): Error & { status?: number } {
     if (error.response) {
       const status = error.response.status;
       const data: any = error.response.data;
       const message = data?.message || data?.error || 'An error occurred';
 
+      let err: Error & { status?: number };
       switch (status) {
         case 401:
-          return new Error(message || 'Authentication required. Please log in again.');
+          err = new Error(message || 'Authentication required. Please log in again.');
+          break;
         case 403:
-          return new Error('You do not have permission to perform this action.');
+          err = new Error('You do not have permission to perform this action.');
+          break;
         case 409:
-          // Return the backend's specific message instead of hardcoding time-slot error
-          return new Error(message || 'This resource is no longer available.');
+          err = new Error(message || 'This resource is no longer available.');
+          break;
         case 422:
-          return new Error(message || 'Invalid data provided.');
+          err = new Error(message || 'Invalid data provided.');
+          break;
         case 429:
-          return new Error('Too many requests. Please wait a moment.');
+          err = new Error('Too many requests. Please wait a moment.');
+          break;
         case 500:
-          // Return the actual backend error message instead of generic message
-          return new Error(message || 'Server error. Please try again later.');
+          err = new Error(message || 'Server error. Please try again later.');
+          break;
         default:
-          return new Error(message || `Request failed with status ${status}`);
+          err = new Error(message || `Request failed with status ${status}`);
       }
+      err.status = status;
+      return err;
     } else if (error.request) {
       return new Error('Network error. Please check your connection.');
     }

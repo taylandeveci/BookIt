@@ -8,6 +8,7 @@ export { LoadingScreen } from './LoadingScreen';
 export { LoadingSpinner } from './LoadingSpinner';
 export { Toast } from './Toast';
 export { BackendHealthCheck } from './BackendHealthCheck';
+export { ScreenHeader } from './ScreenHeader';
 export { Badge } from './Badge';
 export { StatusBadge } from './shared/StatusBadge';
 export { AverageRating } from './shared/AverageRating';

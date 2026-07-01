@@ -32,6 +32,7 @@ import { spacing, typography, borderRadius } from '../../theme/theme';
 import { formatCurrency } from '../../lib/formatCurrency';
 import { useNotificationStore } from '../../store/notificationStore';
 import { useBackendNotificationSync } from '../../hooks/useBackendNotificationSync';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type TabType = 'pending' | 'approved' | 'rejected' | 'staff';
 
@@ -184,7 +185,7 @@ export const RequestsScreen: React.FC = () => {
             try {
               setActionLoading(appointmentId);
               await ownerService.completeAppointment(appointmentId);
-              setToast({ message: t('requests.approveSuccess'), type: 'success' });
+              setToast({ message: t('requests.completeSuccess'), type: 'success' });
               queryClient.invalidateQueries({ queryKey: queryKeys.bookings.ownerAll });
               queryClient.invalidateQueries({ queryKey: queryKeys.bookings.customerAll });
               queryClient.invalidateQueries({ queryKey: queryKeys.bookings.employeeAll });
@@ -283,23 +284,75 @@ export const RequestsScreen: React.FC = () => {
 
   const renderAppointment = ({ item }: { item: AppointmentWithDetails }) => {
     const isLoading = actionLoading === item.id;
-    const displayDate = item.startTime
-      ? new Date(item.startTime).toLocaleDateString()
+
+    const startDate = item.startTime ? new Date(item.startTime) : null;
+    const displayDate = startDate
+      ? startDate.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
       : t('requests.dateNotSet');
-    const displayTime = item.startTime
-      ? new Date(item.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    const displayTime = startDate
+      ? startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       : t('requests.timeNotSet');
+
+    const endTime = startDate && item.service?.durationMin
+      ? new Date(startDate.getTime() + item.service.durationMin * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : null;
+
+    const requestedAgoLabel = (() => {
+      if (item.status !== 'PENDING' || !item.createdAt) return null;
+      const diffMs = Date.now() - new Date(item.createdAt).getTime();
+      const diffH = Math.floor(diffMs / 3600000);
+      const diffM = Math.floor(diffMs / 60000);
+      if (diffH >= 1) return `${diffH}s ${t('requests.ago')}`;
+      return `${diffM}d ${t('requests.ago')}`;
+    })();
 
     return (
       <Card style={styles.appointmentCard}>
+        {/* Header: date pill + time range */}
         <View style={styles.appointmentHeader}>
-          <Text style={[styles.date, typography.headingSemiBold, { color: colors.foreground }]}>
-            {displayDate}
-          </Text>
-          <Text style={[styles.time, typography.bodySemiBold, { color: colors.primary }]}>
-            {displayTime}
-          </Text>
+          <View style={[styles.datePill, { backgroundColor: colors.primary + '15' }]}>
+            <Ionicons name="calendar-outline" size={12} color={colors.primary} />
+            <Text style={[typography.bodySemiBold, { fontSize: typography.sizes.sm, color: colors.primary, marginLeft: 4 }]}>
+              {displayDate}
+            </Text>
+          </View>
+          <View style={styles.timeRange}>
+            <Text style={[typography.bodySemiBold, { fontSize: typography.sizes.sm, color: colors.foreground }]}>
+              {displayTime}
+            </Text>
+            {endTime ? (
+              <Text style={[typography.body, { fontSize: typography.sizes.xs, color: colors.mutedForeground }]}>
+                {' '}- {endTime}
+              </Text>
+            ) : null}
+          </View>
         </View>
+
+        {/* Customer — elevated prominence */}
+        {item.customer && (
+          <View style={[styles.customerRow, { backgroundColor: colors.muted + '80', borderRadius: borderRadius.md }]}>
+            <View style={[styles.customerAvatar, { backgroundColor: colors.primary }]}>
+              <Text style={[typography.bodySemiBold, { color: '#fff', fontSize: 13 }]}>
+                {item.customer.fullName.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[typography.headingSemiBold, { fontSize: typography.sizes.sm, color: colors.foreground }]}>
+                {item.customer.fullName}
+              </Text>
+              {item.customer.email ? (
+                <Text style={[typography.body, { fontSize: typography.sizes.xs, color: colors.mutedForeground }]}>
+                  {item.customer.email}
+                </Text>
+              ) : null}
+            </View>
+            {requestedAgoLabel ? (
+              <Text style={[typography.body, { fontSize: typography.sizes.xs, color: colors.mutedForeground }]}>
+                {requestedAgoLabel}
+              </Text>
+            ) : null}
+          </View>
+        )}
 
         {/* Service details */}
         {item.service && (
@@ -323,16 +376,6 @@ export const RequestsScreen: React.FC = () => {
             <Ionicons name="person-outline" size={14} color={colors.mutedForeground} />
             <Text style={[styles.metaText, typography.body, { color: colors.mutedForeground }]}>
               {item.employee.fullName}
-            </Text>
-          </View>
-        )}
-
-        {/* Customer */}
-        {item.customer && (
-          <View style={styles.metaRow}>
-            <Ionicons name="person-circle-outline" size={14} color={colors.mutedForeground} />
-            <Text style={[styles.metaText, typography.body, { color: colors.mutedForeground }]}>
-              {item.customer.fullName}
             </Text>
           </View>
         )}
@@ -458,7 +501,7 @@ export const RequestsScreen: React.FC = () => {
   const staffBadgeCount = pendingEmployees.length > 0 ? ` (${pendingEmployees.length})` : '';
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       {toast && (
         <Toast
           message={toast.message}
@@ -582,7 +625,7 @@ export const RequestsScreen: React.FC = () => {
           </Card>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -610,14 +653,34 @@ const styles = StyleSheet.create({
   appointmentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: spacing.sm,
   },
-  date: {
-    fontSize: typography.sizes.md,
+  datePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.pill,
   },
-  time: {
-    fontSize: typography.sizes.md,
+  timeRange: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  customerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  customerAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   serviceRow: {
     flexDirection: 'row',

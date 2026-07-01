@@ -19,7 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { authService } from '../../services/authService';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/useTheme';
-import { Button, Input, Card, ImageWithFallback } from '../../components';
+import { Button, Input, Card, ImageWithFallback, ScreenHeader } from '../../components';
 import { spacing, typography, borderRadius } from '../../theme/theme';
 
 const schema = z.object({
@@ -133,7 +133,10 @@ export const EmployeeEditProfileScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['bottom']}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScreenHeader title={t('navigation.editProfile')} />
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <Card style={styles.card}>
           <Text style={[styles.title, typography.headingSemiBold, { color: colors.foreground }]}>
             {t('profile.editProfile')}

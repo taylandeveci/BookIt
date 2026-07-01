@@ -4,8 +4,10 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  ScrollView,
   TouchableOpacity,
   Alert,
+  TextInput,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -26,8 +28,9 @@ import {
   EmptyState,
   Toast,
 } from '../../components';
-import { spacing, typography } from '../../theme/theme';
+import { spacing, typography, borderRadius } from '../../theme/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -38,14 +41,21 @@ type AppointmentWithDetails = Appointment & {
 };
 
 export const AppointmentsScreen: React.FC = () => {
-  const { colors } = useTheme();
+  const { colors, shadows } = useTheme();
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const user = useAuthStore((state) => state.user);
 
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<'active' | 'past'>('active');
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const handleTabChange = (next: 'active' | 'past') => {
+    setTab(next);
+    setStatusFilter(null);
+  };
 
   const { data: appointments = [], isLoading: loading } = useQuery({
     queryKey: queryKeys.bookings.customerAll,
@@ -141,7 +151,6 @@ export const AppointmentsScreen: React.FC = () => {
     if (status === 'CANCELLED') return t('appointments.cancelled');
     if (status === 'REJECTED') return t('appointments.rejected');
     if (status === 'NO_SHOW') return t('common.noShow');
-    if (status === 'DISPUTED') return t('common.disputed');
     return status;
   };
 
@@ -158,8 +167,6 @@ export const AppointmentsScreen: React.FC = () => {
         return colors.destructive;
       case 'COMPLETED':
         return colors.info;
-      case 'DISPUTED':
-        return colors.secondary;
       default:
         return colors.mutedForeground;
     }
@@ -190,28 +197,50 @@ export const AppointmentsScreen: React.FC = () => {
   };
 
   const filterAppointments = (): AppointmentWithDetails[] => {
+    const q = search.trim().toLowerCase();
+    const matchSearch = (apt: AppointmentWithDetails) =>
+      !q ||
+      apt.business?.name?.toLowerCase().includes(q) ||
+      apt.service?.name?.toLowerCase().includes(q) ||
+      apt.employee?.fullName?.toLowerCase().includes(q);
+
+    const matchStatus = (apt: AppointmentWithDetails) => {
+      if (!statusFilter) return true;
+      if (statusFilter === 'IN_PROGRESS') return apt.status === 'IN_PROGRESS' && !isInProgressExpired(apt);
+      if (statusFilter === 'PENDING') return apt.status === 'PENDING' && !isPendingPastDue(apt);
+      return apt.status === statusFilter;
+    };
+
     if (tab === 'active') {
       return appointments.filter(
         (apt) =>
-          (apt.status === 'PENDING' && !isPendingPastDue(apt)) ||
+          matchSearch(apt) &&
+          matchStatus(apt) &&
+          ((apt.status === 'PENDING' && !isPendingPastDue(apt)) ||
           apt.status === 'APPROVED' ||
-          (apt.status === 'IN_PROGRESS' && !isInProgressExpired(apt))
+          (apt.status === 'IN_PROGRESS' && !isInProgressExpired(apt)))
       );
     } else {
       return appointments.filter(
         (apt) =>
-          apt.status === 'COMPLETED' ||
+          matchSearch(apt) &&
+          matchStatus(apt) &&
+          (apt.status === 'COMPLETED' ||
           apt.status === 'CANCELLED' ||
           apt.status === 'REJECTED' ||
           apt.status === 'NO_SHOW' ||
           (apt.status === 'IN_PROGRESS' && isInProgressExpired(apt)) ||
-          (apt.status === 'PENDING' && isPendingPastDue(apt))
+          (apt.status === 'PENDING' && isPendingPastDue(apt)))
       );
     }
   };
 
   const renderAppointment = ({ item }: { item: AppointmentWithDetails }) => (
-    <Card style={styles.appointmentCard}>
+    <Card
+      style={styles.appointmentCard}
+      pressable
+      onPress={() => navigation.navigate('AppointmentDetail', { appointmentId: item.id })}
+    >
       <View style={styles.appointmentHeader}>
         <Text
           style={[
@@ -334,7 +363,7 @@ export const AppointmentsScreen: React.FC = () => {
 
   if (!user) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
         <EmptyState
           title={t('appointments.loginRequired')}
           description={t('appointments.loginToView')}
@@ -345,12 +374,12 @@ export const AppointmentsScreen: React.FC = () => {
             onPress={() => navigation.navigate('Auth')}
           />
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       {toast && (
         <Toast
           message={toast.message}
@@ -359,19 +388,85 @@ export const AppointmentsScreen: React.FC = () => {
         />
       )}
 
-      <View style={styles.tabSelector}>
-        <Chip
-          label={t('appointments.active')}
-          selected={tab === 'active'}
-          onPress={() => setTab('active')}
-          variant="primary"
-        />
-        <Chip
-          label={t('appointments.past')}
-          selected={tab === 'past'}
-          onPress={() => setTab('past')}
-          variant="primary"
-        />
+      <View style={[styles.headerBlock, { borderBottomColor: colors.border }]}>
+        {/* Tab seçici */}
+        <View style={styles.tabSelector}>
+          <Chip
+            label={t('appointments.active')}
+            selected={tab === 'active'}
+            onPress={() => handleTabChange('active')}
+            variant="primary"
+          />
+          <Chip
+            label={t('appointments.past')}
+            selected={tab === 'past'}
+            onPress={() => handleTabChange('past')}
+            variant="primary"
+          />
+        </View>
+
+        {/* Arama */}
+        <View style={[styles.searchRow, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: borderRadius.pill }, shadows.sm]}>
+          <Ionicons name="search-outline" size={16} color={colors.mutedForeground} />
+          <TextInput
+            style={[styles.searchInput, typography.body, { color: colors.foreground }]}
+            placeholder={t('appointments.search')}
+            placeholderTextColor={colors.placeholder}
+            value={search}
+            onChangeText={setSearch}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+          />
+        </View>
+
+        {/* Durum filtreleri */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}
+        >
+          {(tab === 'active'
+            ? [
+                { key: null, label: t('common.all'), color: colors.primary },
+                { key: 'PENDING', label: t('appointments.pending'), color: colors.warning },
+                { key: 'APPROVED', label: t('appointments.approved'), color: colors.success },
+                { key: 'IN_PROGRESS', label: t('bookings.statusInProgress'), color: colors.info },
+              ]
+            : [
+                { key: null, label: t('common.all'), color: colors.primary },
+                { key: 'COMPLETED', label: t('appointments.completed'), color: colors.info },
+                { key: 'CANCELLED', label: t('appointments.cancelled'), color: colors.mutedForeground },
+                { key: 'REJECTED', label: t('appointments.rejected'), color: colors.destructive },
+                { key: 'NO_SHOW', label: t('common.noShow'), color: colors.destructive },
+              ]
+          ).map(({ key, label, color }) => {
+            const selected = statusFilter === key;
+            return (
+              <TouchableOpacity
+                key={String(key)}
+                onPress={() => setStatusFilter(key)}
+                activeOpacity={0.7}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor: selected ? color : colors.muted,
+                    borderColor: selected ? color : color + '40',
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    typography.bodySemiBold,
+                    styles.filterChipText,
+                    { color: selected ? '#FFFFFF' : color },
+                  ]}
+                >
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {loading ? (
@@ -398,7 +493,7 @@ export const AppointmentsScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -406,10 +501,45 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  headerBlock: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingBottom: spacing.sm,
+  },
   tabSelector: {
     flexDirection: 'row',
-    padding: spacing.xl,
-    paddingBottom: spacing.md,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: spacing.xl,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    gap: spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    padding: 0,
+  },
+  filterRow: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xs,
+    gap: spacing.sm,
+  },
+  filterChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: borderRadius.pill,
+    borderWidth: 1,
+  },
+  filterChipText: {
+    fontSize: typography.sizes.sm,
   },
   list: {
     paddingHorizontal: spacing.xl,

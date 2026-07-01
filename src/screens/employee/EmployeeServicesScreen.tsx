@@ -247,7 +247,7 @@ export const EmployeeServicesScreen: React.FC = () => {
 
   if (!businessId) {
     return (
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['bottom']}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
         <EmptyState
           icon="briefcase-outline"
           title={t('employeeServices.joinBusinessFirst')}
@@ -260,7 +260,7 @@ export const EmployeeServicesScreen: React.FC = () => {
   // ---- Main list ----
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['bottom']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       {toast && <Toast message={toast.message} type={toast.type} onHide={() => setToast(null)} />}
 
       <FlatList
@@ -345,7 +345,7 @@ export const EmployeeServicesScreen: React.FC = () => {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalSheet, { backgroundColor: colors.card }]}>
             {/* Sheet header */}
-            <View style={styles.sheetHeader}>
+            <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
               {step === 'form' ? (
                 <TouchableOpacity
                   onPress={() => (editingMyService ? closeModal() : setStep('pick'))}

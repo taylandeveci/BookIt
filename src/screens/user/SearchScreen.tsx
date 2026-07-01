@@ -84,6 +84,7 @@ export const SearchScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [filters, setFilters] = useState<FilterOptions>({});
+  const [availableToday, setAvailableToday] = useState(false);
   const [activeService, setActiveService] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [mapRegion, setMapRegion] = useState<{
@@ -113,11 +114,13 @@ export const SearchScreen: React.FC = () => {
     queryKey: queryKeys.businesses.list({
       query: debouncedQuery,
       serviceName: activeService,
+      availableToday,
     }),
     queryFn: () =>
       businessService.getBusinesses({
         search: debouncedQuery || undefined,
         serviceName: activeService || undefined,
+        availableToday: availableToday || undefined,
       }),
     staleTime: 30_000,
   });
@@ -269,7 +272,7 @@ export const SearchScreen: React.FC = () => {
   );
 
   // Empty-state logic
-  const hasAnyFilter = !!filters.minRating || !!activeService || !!activeCategory;
+  const hasAnyFilter = !!filters.minRating || !!activeService || !!activeCategory || availableToday;
   const hasAnySearch = searchQuery.trim().length > 0;
   // DB is empty — no filters or search active, server returned nothing
   const showDbEmpty = !isLoading && businesses.length === 0 && !hasAnyFilter && !hasAnySearch;
@@ -278,7 +281,7 @@ export const SearchScreen: React.FC = () => {
   const showList = !isLoading && filteredBusinesses.length > 0;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['bottom']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       {toast ? (
         <Toast message={toast.message} type={toast.type} onHide={() => setToast(null)} />
       ) : null}
@@ -312,6 +315,27 @@ export const SearchScreen: React.FC = () => {
           disabled={mapModalVisible}
         >
           <Ionicons name="map-outline" size={20} color={colors.primary} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Hızlı filtreler */}
+      <View style={[styles.filterSection, { paddingHorizontal: spacing.md }]}>
+        <TouchableOpacity
+          onPress={() => setAvailableToday((v) => !v)}
+          activeOpacity={0.7}
+          style={[
+            styles.quickChip,
+            {
+              backgroundColor: availableToday ? colors.success : colors.muted,
+              borderColor: availableToday ? colors.success : colors.success + '55',
+              borderRadius: borderRadius.pill,
+            },
+          ]}
+        >
+          <Ionicons name="checkmark-circle-outline" size={14} color={availableToday ? '#FFFFFF' : colors.success} />
+          <Text style={[typography.bodySemiBold, { fontSize: typography.sizes.sm, color: availableToday ? '#FFFFFF' : colors.success }]}>
+            {t('search.availableToday')}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -446,8 +470,8 @@ export const SearchScreen: React.FC = () => {
       {/* Content area — skeleton / DB-empty / filter-mismatch / list */}
       {isLoading ? (
         <ScrollView
-          contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.list}
         >
           {Array.from({ length: SKELETON_COUNT }, (_, i) => renderSkeletonCard(i))}
         </ScrollView>
@@ -673,6 +697,15 @@ const styles = StyleSheet.create({
   chipScrollContent: {
     paddingHorizontal: spacing.md,
     gap: spacing.sm,
+  },
+  quickChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderWidth: 1,
   },
   chip: {
     paddingHorizontal: spacing.md,

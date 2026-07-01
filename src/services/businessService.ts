@@ -13,6 +13,7 @@ export const businessService = {
     if (filters?.minRating) params.append('minRating', filters.minRating.toString());
     if (filters?.maxDistance) params.append('maxDistance', filters.maxDistance.toString());
     if (filters?.serviceName) params.append('serviceName', filters.serviceName);
+    if (filters?.availableToday) params.append('availableToday', '1');
 
     const query = params.toString();
     return await apiClient.get<Business[]>(`/businesses${query ? `?${query}` : ''}`);
@@ -29,6 +30,14 @@ export const businessService = {
   async getServices(businessId: string, employeeId?: string): Promise<Service[]> {
     const query = employeeId ? `?employeeId=${employeeId}` : '';
     return await apiClient.get<Service[]>(`/businesses/${businessId}/services${query}`);
+  },
+
+  async getFavorites(): Promise<Business[]> {
+    return await apiClient.get<Business[]>('/businesses/favorites');
+  },
+
+  async toggleFavorite(businessId: string): Promise<{ isFavorited: boolean }> {
+    return await apiClient.post<{ isFavorited: boolean }>(`/businesses/${businessId}/favorite`, {});
   },
 
   async getAvailableTimeSlots(

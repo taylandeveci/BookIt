@@ -14,7 +14,8 @@ import { useTranslation } from 'react-i18next';
 import { authService } from '../../services/authService';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/useTheme';
-import { Button, Input, Card } from '../../components';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Button, Input, Card, ScreenHeader } from '../../components';
 import { spacing, typography } from '../../theme/theme';
 
 const passwordSchema = z
@@ -73,10 +74,13 @@ export const ChangePasswordScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.content}
-    >
+    <SafeAreaView style={[{ flex: 1, backgroundColor: colors.background }]} edges={['bottom']}>
+      <ScreenHeader title={t('navigation.changePassword')} />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={[styles.container, { backgroundColor: colors.background }]}
+        contentContainerStyle={styles.content}
+      >
       <Card style={styles.card}>
         <Text
           style={[
@@ -144,6 +148,7 @@ export const ChangePasswordScreen: React.FC = () => {
         />
       </Card>
     </ScrollView>
+    </SafeAreaView>
   );
 };
 

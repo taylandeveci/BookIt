@@ -24,6 +24,7 @@ export interface AppNotification {
   createdAt: Date;
   read: boolean;
   userId: string;
+  reservationId?: string;
 }
 
 interface NotificationState {

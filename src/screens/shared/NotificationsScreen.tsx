@@ -76,6 +76,33 @@ export const NotificationsScreen: React.FC = () => {
 
   const userNotifications = notifications.filter((n) => n.userId === user?.id);
 
+  const handleNotificationPress = useCallback((item: AppNotification) => {
+    markAsRead(item.id);
+    const nav = navigation as any;
+    const role = user?.role;
+    switch (item.type) {
+      case 'booking_confirmed':
+      case 'booking_cancelled':
+      case 'booking_rejected':
+      case 'booking_pending':
+        if (role === 'USER') nav.navigate('UserTabs', { screen: 'Appointments' });
+        else if (role === 'EMPLOYEE') nav.navigate('EmployeeTabs', { screen: 'EmployeeDashboard' });
+        break;
+      case 'new_booking_request':
+        if (role === 'OWNER') nav.navigate('OwnerTabs', { screen: 'Requests' });
+        else if (role === 'EMPLOYEE') nav.navigate('EmployeeTabs', { screen: 'EmployeeDashboard' });
+        break;
+      case 'new_review':
+        if (role === 'OWNER') nav.navigate('OwnerTabs', { screen: 'Dashboard' });
+        break;
+      case 'employee_approved':
+        nav.navigate('EmployeeTabs', { screen: 'EmployeeDashboard' });
+        break;
+      default:
+        break;
+    }
+  }, [navigation, user, markAsRead]);
+
   const renderItem = useCallback(({ item }: { item: AppNotification }) => {
     const rowBg = item.read ? 'transparent' : colors.muted + '4D';
 
@@ -114,7 +141,7 @@ export const NotificationsScreen: React.FC = () => {
     const iconColor = getIconColor(item.type, colors);
     return (
       <TouchableOpacity
-        onPress={() => markAsRead(item.id)}
+        onPress={() => handleNotificationPress(item)}
         activeOpacity={0.7}
         style={[styles.row, { backgroundColor: rowBg }]}
       >

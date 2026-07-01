@@ -31,6 +31,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { spacing, typography, borderRadius } from '../../theme/theme';
 import { queryKeys } from '../../lib/queryKeys';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const employeeSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -47,6 +48,7 @@ export const EmployeesScreen: React.FC = () => {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [toggleLoading, setToggleLoading] = useState<string | null>(null);
   const [codeCopied, setCodeCopied] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -134,6 +136,41 @@ export const EmployeesScreen: React.FC = () => {
     }
   };
 
+  const handleToggleActive = async (employee: Employee) => {
+    const isCurrentlyActive = employee.isActive !== false;
+    const confirmKey = isCurrentlyActive ? 'employees.deactivateConfirm' : 'employees.activateConfirm';
+    Alert.alert(
+      isCurrentlyActive ? t('employees.deactivate') : t('employees.activate'),
+      t(confirmKey, { name: employee.fullName }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: isCurrentlyActive ? t('employees.deactivate') : t('employees.activate'),
+          style: isCurrentlyActive ? 'destructive' : 'default',
+          onPress: async () => {
+            setToggleLoading(employee.id);
+            try {
+              await ownerService.toggleActiveEmployee(employee.id);
+              setToast({
+                message: isCurrentlyActive ? t('employees.deactivateSuccess') : t('employees.activateSuccess'),
+                type: 'success',
+              });
+              if (businessId) {
+                queryClient.invalidateQueries({ queryKey: queryKeys.employees.forBusiness(businessId) });
+                queryClient.invalidateQueries({ queryKey: queryKeys.businesses.employees(businessId) });
+                queryClient.invalidateQueries({ queryKey: ['owner', 'dashboard'] });
+              }
+            } catch (error: any) {
+              setToast({ message: error.message || t('common.error'), type: 'error' });
+            } finally {
+              setToggleLoading(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleDelete = (employee: Employee) => {
     Alert.alert(
       t('employees.deleteConfirm'),
@@ -162,93 +199,97 @@ export const EmployeesScreen: React.FC = () => {
     );
   };
 
-  const renderEmployee = ({ item }: { item: Employee }) => (
-    <Card style={styles.employeeCard}>
-      <View style={styles.employeeHeader}>
-        <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-          <Text style={styles.avatarText}>
-            {item.fullName.charAt(0).toUpperCase()}
-          </Text>
-        </View>
+  const renderEmployee = ({ item }: { item: Employee }) => {
+    const isActive = item.isActive !== false;
+    const empStatus = (item as any).status as string | undefined;
+    const isToggling = toggleLoading === item.id;
+    const canToggle = !empStatus || empStatus === 'ACTIVE';
 
-        <View style={styles.employeeInfo}>
-          <Text style={[styles.employeeName, typography.headingSemiBold, { color: colors.foreground }]}>
-            {item.fullName}
-          </Text>
-          <View style={styles.statusRow}>
-            <View
-              style={[
-                styles.statusBadge,
-                {
-                  backgroundColor:
-                    (item as any).status === 'ACTIVE' ? colors.primary + '1F' :
-                    (item as any).status === 'PENDING' ? colors.secondary + '1F' : colors.destructive + '1F',
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  typography.body,
-                  {
-                    fontSize: 11,
-                    fontWeight: '600',
-                    color:
-                      (item as any).status === 'ACTIVE' ? colors.primary :
-                      (item as any).status === 'PENDING' ? colors.secondary : colors.destructive,
-                  },
-                ]}
-              >
-                {(item as any).status === 'ACTIVE' ? t('employees.active') :
-                 (item as any).status === 'PENDING' ? t('employees.pendingApproval') :
-                 (item as any).status === 'REJECTED' ? t('employees.rejected') :
-                 item.isActive ? t('employees.active') : t('services.inactive')}
-              </Text>
+    const statusColor =
+      empStatus === 'ACTIVE' ? (isActive ? colors.primary : colors.warning) :
+      empStatus === 'PENDING' ? colors.secondary :
+      colors.destructive;
+
+    const statusLabel =
+      empStatus === 'PENDING' ? t('employees.pendingApproval') :
+      empStatus === 'REJECTED' ? t('employees.rejected') :
+      isActive ? t('employees.active') : t('employees.inactive');
+
+    return (
+      <Card style={[styles.employeeCard, !isActive && { opacity: 0.72 }]}>
+        <View style={styles.employeeHeader}>
+          <View style={[styles.avatar, { backgroundColor: isActive ? colors.primary : colors.mutedForeground }]}>
+            <Text style={styles.avatarText}>
+              {item.fullName.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+
+          <View style={styles.employeeInfo}>
+            <Text style={[styles.employeeName, typography.headingSemiBold, { color: colors.foreground }]}>
+              {item.fullName}
+            </Text>
+            <View style={styles.statusRow}>
+              <View style={[styles.statusBadge, { backgroundColor: statusColor + '1F' }]}>
+                <Text style={[typography.body, { fontSize: 11, fontWeight: '600', color: statusColor }]}>
+                  {statusLabel}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
-      </View>
 
-      <View style={styles.employeeActions}>
-        <Button
-          title={t('common.edit')}
-          variant="outline"
-          size="sm"
-          onPress={() => openEdit(item)}
-          style={styles.actionButton}
-        />
-        <Button
-          title={t('common.delete')}
-          variant="destructive"
-          size="sm"
-          onPress={() => handleDelete(item)}
-          style={styles.actionButton}
-        />
-      </View>
-    </Card>
-  );
+        <View style={styles.employeeActions}>
+          <Button
+            title={t('common.edit')}
+            variant="outline"
+            size="sm"
+            onPress={() => openEdit(item)}
+            style={styles.actionButton}
+          />
+          {canToggle && (
+            <Button
+              title={isActive ? t('employees.deactivate') : t('employees.activate')}
+              variant={isActive ? 'outline' : 'secondary'}
+              size="sm"
+              onPress={() => handleToggleActive(item)}
+              loading={isToggling}
+              style={styles.actionButton}
+            />
+          )}
+          <Button
+            title={t('common.delete')}
+            variant="destructive"
+            size="sm"
+            onPress={() => handleDelete(item)}
+            style={styles.actionButton}
+          />
+        </View>
+      </Card>
+    );
+  };
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
         <LoadingSpinner />
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!business) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
         <EmptyState
           icon="business"
           title={t('employees.noBusiness')}
           description={t('employees.noBusinessDesc')}
         />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       {toast && (
         <Toast message={toast.message} type={toast.type} onHide={() => setToast(null)} />
       )}
@@ -349,7 +390,7 @@ export const EmployeesScreen: React.FC = () => {
           </Card>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 

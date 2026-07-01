@@ -28,6 +28,7 @@ import { useNotificationStore } from '../../store/notificationStore';
 import { useBackendNotificationSync } from '../../hooks/useBackendNotificationSync';
 import { spacing, typography, borderRadius } from '../../theme/theme';
 import { PendingEmployee } from '../../types';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -360,6 +361,17 @@ export const DashboardScreen: React.FC = () => {
 
   const [selectedRange, setSelectedRange] = useState<RangeFilter>('Month');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem('dashboard_range').then((v) => {
+      if (v === 'Day' || v === 'Month' || v === 'Year') setSelectedRange(v);
+    });
+  }, []);
+
+  const handleRangeChange = (r: RangeFilter) => {
+    setSelectedRange(r);
+    AsyncStorage.setItem('dashboard_range', r);
+  };
   const [empActionLoading, setEmpActionLoading] = useState<string | null>(null);
   const addNotification = useNotificationStore((s) => s.addNotification);
   const [unseenCount, setUnseenCount] = useState(0);
@@ -419,6 +431,12 @@ export const DashboardScreen: React.FC = () => {
     staleTime: 60000,
   });
 
+  const staffSatisfactionQuery = useQuery({
+    queryKey: ['owner', 'staff-satisfaction'],
+    queryFn: () => ownerService.getStaffSatisfaction(),
+    staleTime: 60000,
+  });
+
   const checkUnseenReviews = useCallback(async () => {
     const businessId = businessQuery.data?.id;
     if (!businessId || !reviewsQuery.data) return;
@@ -442,6 +460,7 @@ export const DashboardScreen: React.FC = () => {
         queryClient.invalidateQueries({ queryKey: queryKeys.owner.business }),
         queryClient.invalidateQueries({ queryKey: queryKeys.bookings.ownerAll }),
         queryClient.invalidateQueries({ queryKey: ['employees'] }),
+        queryClient.invalidateQueries({ queryKey: ['owner', 'staff-satisfaction'] }),
       ];
       if (businessQuery.data?.id) {
         invalidations.push(
@@ -555,20 +574,37 @@ export const DashboardScreen: React.FC = () => {
 
   const revTrend = useMemo(() => trendPct(currentRevenue, previousRevenue), [currentRevenue, previousRevenue]);
 
+  // Today's projected revenue: APPROVED appointments for today (booked but not yet completed)
+  const todayExpectedRevenue = useMemo(() => {
+    const todayRange = getRange('Day');
+    return (appointmentsQuery.data as DashApt[] ?? [])
+      .filter(a =>
+        (a.status === 'APPROVED') &&
+        a.startTime &&
+        new Date(a.startTime).getTime() >= todayRange.start.getTime() &&
+        new Date(a.startTime).getTime() <= todayRange.end.getTime()
+      )
+      .reduce((s, a) => s + Number(a.service?.price ?? 0), 0);
+  }, [appointmentsQuery.data]);
+
   const staffStats = useMemo(() => {
     const emps = (employeesQuery.data ?? []) as Array<{
       id: string;
       fullName: string;
     }>;
+    const satisfactionMap = new Map(
+      (staffSatisfactionQuery.data ?? []).map((s) => [s.employeeId, s.avgSatisfaction])
+    );
     return emps
       .map(emp => {
         const rev = filteredApts
           .filter(a => a.employeeId === emp.id && a.status === 'COMPLETED')
           .reduce((s, a) => s + Number(a.service?.price ?? 0), 0);
-        return { id: emp.id, name: emp.fullName, revenue: rev };
+        const satisfaction = satisfactionMap.get(emp.id) ?? null;
+        return { id: emp.id, name: emp.fullName, revenue: rev, satisfaction };
       })
       .sort((a, b) => b.revenue - a.revenue);
-  }, [employeesQuery.data, filteredApts]);
+  }, [employeesQuery.data, filteredApts, staffSatisfactionQuery.data]);
 
   const business = businessQuery.data;
   const pendingEmployees = (pendingQuery.data ?? []) as PendingEmployee[];
@@ -627,11 +663,12 @@ export const DashboardScreen: React.FC = () => {
   // --- Render ---
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={[styles.container, { backgroundColor: colors.background }]}
+        contentContainerStyle={styles.content}
+      >
       {toast && (
         <Toast message={toast.message} type={toast.type} onHide={() => setToast(null)} />
       )}
@@ -662,7 +699,7 @@ export const DashboardScreen: React.FC = () => {
                   styles.pill,
                   { backgroundColor: active ? colors.primary : colors.muted },
                 ]}
-                onPress={() => setSelectedRange(r)}
+                onPress={() => handleRangeChange(r)}
                 activeOpacity={0.7}
               >
                 <Text
@@ -979,6 +1016,14 @@ export const DashboardScreen: React.FC = () => {
             </Text>
             <TrendBadge pct={revTrend} />
           </View>
+          {todayExpectedRevenue > 0 && (
+            <View style={[styles.expectedRevenueRow, { backgroundColor: colors.success + '15', borderRadius: 8 }]}>
+              <Ionicons name="calendar-outline" size={13} color={colors.success} />
+              <Text style={[typography.body, { fontSize: typography.sizes.xs, color: colors.success }]}>
+                {t('dashboard.todayExpected')}: {formatCurrency(todayExpectedRevenue)}
+              </Text>
+            </View>
+          )}
         </Card>
       )}
 
@@ -1016,15 +1061,22 @@ export const DashboardScreen: React.FC = () => {
                       {emp.name.charAt(0).toUpperCase()}
                     </Text>
                   </View>
-                  <Text
-                    style={[
-                      typography.bodySemiBold,
-                      { color: colors.foreground, fontSize: typography.sizes.md },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {emp.name}
-                  </Text>
+                  <View>
+                    <Text
+                      style={[
+                        typography.bodySemiBold,
+                        { color: colors.foreground, fontSize: typography.sizes.md },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {emp.name}
+                    </Text>
+                    {emp.satisfaction !== null && (
+                      <Text style={[typography.body, { color: colors.mutedForeground, fontSize: typography.sizes.xs }]}>
+                        {t('dashboard.satisfaction')}: {Math.round((emp.satisfaction / 5) * 100)}%
+                      </Text>
+                    )}
+                  </View>
                 </View>
                 <Text
                   style={[
@@ -1040,6 +1092,7 @@ export const DashboardScreen: React.FC = () => {
         </View>
       ) : null}
     </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -1180,6 +1233,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     gap: spacing.sm,
     flexWrap: 'wrap',
+  },
+  expectedRevenueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs + 2,
   },
 
   // Trend badge

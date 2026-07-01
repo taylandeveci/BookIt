@@ -140,7 +140,9 @@
     "appointmentsCenterLabel": "Toplam",
     "noAppointmentsInPeriod": "Bu dönemde randevu bulunmuyor",
     "totalRevenue": "Toplam Gelir",
+    "todayExpected": "Bugün Beklenen",
     "staffPerformance": "Çalışan Performansı",
+    "satisfaction": "Memnuniyet",
     "noBusiness": "İşletme Bulunamadı",
     "noBusinessDesc": "Henüz kayıtlı bir işletmeniz yok",
     "legendCompleted": "Tamamlandı",
@@ -165,6 +167,7 @@
     "approveConfirm": "Bu randevuyu onaylıyor musunuz?",
     "rejectConfirm": "Bu randevuyu reddediyor musunuz?",
     "approveSuccess": "Randevu onaylandı",
+    "completeSuccess": "Randevu tamamlandı",
     "rejectSuccess": "Randevu reddedildi",
     "approveError": "Randevu onaylanamadı",
     "rejectError": "Randevu reddedilemedi",
@@ -180,7 +183,8 @@
     "duration": "Süre",
     "approveRequest": "Talebi Onayla",
     "dateNotSet": "Tarih belirtilmemiş",
-    "timeNotSet": "Saat belirtilmemiş"
+    "timeNotSet": "Saat belirtilmemiş",
+    "ago": "önce"
   },
   "employees": {
     "title": "Çalışanlar",
@@ -216,7 +220,14 @@
     "reject": "Reddet",
     "approveSuccess": "Çalışan onaylandı",
     "rejectSuccess": "Çalışan reddedildi",
-    "noPending": "Bekleyen çalışan yok"
+    "noPending": "Bekleyen çalışan yok",
+    "inactive": "Devre Dışı",
+    "deactivate": "Devre Dışı Bırak",
+    "activate": "Aktifleştir",
+    "deactivateConfirm": "{{name}} adlı çalışanı devre dışı bırakmak istiyor musunuz? Yeni randevu alınamayacak.",
+    "activateConfirm": "{{name}} adlı çalışanı tekrar aktifleştirmek istiyor musunuz?",
+    "deactivateSuccess": "Çalışan devre dışı bırakıldı",
+    "activateSuccess": "Çalışan aktifleştirildi"
   },
   "services": {
     "title": "Hizmetler",
@@ -248,7 +259,8 @@
     "addServiceBtn": "Hizmet Ekle",
     "priceLabel": "Fiyat",
     "priceError": "Fiyat 0'dan büyük olmalıdır",
-    "durationError": "Süre 0'dan büyük olmalıdır"
+    "durationError": "Süre 0'dan büyük olmalıdır",
+    "bookings": "rezervasyon"
   },
   "profile": {
     "title": "Profil",
@@ -284,6 +296,7 @@
     "recentAppointments": "Son Randevular",
     "active": "Aktif",
     "past": "Geçmiş",
+    "search": "İşletme, hizmet veya çalışan ara...",
     "loginAgain": "Lütfen tekrar giriş yapın",
     "guestUser": "Kullanıcı",
     "loadError": "Randevular yüklenemedi"
@@ -359,6 +372,7 @@
     "resultCount": "{{count}} işletme bulundu",
     "clearFilters": "Filtreleri Temizle",
     "filterNoResults": "Filtrelerle eşleşen işletme bulunamadı",
+    "availableToday": "Bugün Müsait",
     "categories": "Kategoriler",
     "chipBarber": "Berber",
     "chipHairColor": "Saç Boyama",
@@ -376,6 +390,7 @@
     "bookAppointment": "Randevu Al",
     "viewAllReviews": "Tüm Yorumları Gör",
     "noServices": "Hizmet bulunmuyor",
+    "noEmployees": "Bu işletmede aktif çalışan bulunmuyor",
     "noReviews": "Henüz yorum yok",
     "openNow": "Açık",
     "closed": "Kapalı",
@@ -393,6 +408,7 @@
     "bookingConfirmed": "Randevu alındı!",
     "bookingSuccess": "Randevu başarıyla oluşturuldu!",
     "bookingError": "Randevu alınamadı",
+    "slotTaken": "Bu saat doldu, lütfen başka bir saat seçin",
     "loginRequired": "Giriş Gerekli",
     "loginRequiredDesc": "Randevu almak için giriş yapın",
     "bookingStepsIncomplete": "Lütfen tüm rezervasyon adımlarını tamamlayın",
@@ -464,6 +480,17 @@
     "expiredNote": "Süresi doldu — zamanında onaylanmadı",
     "reviewSubmitted": "Yorum Yapıldı"
   },
+  "appointmentDetail": {
+    "title": "Randevu Detayı",
+    "business": "İşletme",
+    "dateTime": "Tarih & Saat",
+    "service": "Hizmet",
+    "employee": "Çalışan",
+    "upcoming": "Yaklaşan Randevu",
+    "hoursLeft": "{{count}} saat kaldı",
+    "minutesLeft": "{{count}} dakika kaldı",
+    "tomorrow": "Yarın"
+  },
   "reviews": {
     "title": "Yorumlar",
     "writeReview": "Yorum Yaz",
@@ -492,7 +519,9 @@
     "commentRequired": "Lütfen bir yorum yazın",
     "awaitingApproval": "Yorum gönderildi! İşletme onayı bekleniyor.",
     "basedOn": "{{count}} yoruma göre",
-    "allReviews": "Tüm Yorumlar"
+    "allReviews": "Tüm Yorumlar",
+    "employeeSatisfaction": "Personel memnuniyeti",
+    "employeeSatisfactionHint": "İsteğe bağlı — sadece işletme sahibi görür"
   },
   "status": {
     "pending": "Beklemede",
@@ -545,7 +574,8 @@
     "decline": "Reddet",
     "todaySchedule": "Bugünün Programı",
     "noPendingRequests": "Bekleyen talep yok",
-    "noAppointmentsToday": "Bugün randevu yok"
+    "noAppointmentsToday": "Bugün randevu yok",
+    "todayTitle": "Bugünün Randevuları"
   },
   "employeeCalendar": {
     "title": "Takvim",

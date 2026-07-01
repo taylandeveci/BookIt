@@ -17,6 +17,7 @@ import { useTheme } from '../../theme/useTheme';
 import { employeeService } from '../../services/employeeService';
 import { queryKeys } from '../../lib/queryKeys';
 import { spacing, typography, borderRadius } from '../../theme/theme';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -114,7 +115,7 @@ export const EmployeeHomeScreen: React.FC = () => {
         <View style={styles.actions}>
           {canStart && (
             <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: '#3b82f6' }]}
+              style={[styles.actionBtn, { backgroundColor: colors.info }]}
               onPress={() => handleStart(item.id, bookingDate)}
               disabled={!!actionLoading}
             >
@@ -131,7 +132,7 @@ export const EmployeeHomeScreen: React.FC = () => {
 
           {canComplete && (
             <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: '#22c55e' }]}
+              style={[styles.actionBtn, { backgroundColor: colors.success }]}
               onPress={() => handleComplete(item.id, bookingDate)}
               disabled={!!actionLoading}
             >
@@ -159,8 +160,10 @@ export const EmployeeHomeScreen: React.FC = () => {
     );
   }
 
+  const today = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       <FlatList
         data={appointments}
         keyExtractor={(item) => item.id}
@@ -171,6 +174,16 @@ export const EmployeeHomeScreen: React.FC = () => {
         initialNumToRender={6}
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={false} onRefresh={() => queryClient.invalidateQueries({ queryKey: queryKeys.bookings.employeeAll })} />}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <Text style={[typography.heading, styles.headerTitle, { color: colors.foreground }]}>
+              {t('employeeDashboard.todayTitle')}
+            </Text>
+            <Text style={[typography.body, { color: colors.mutedForeground, fontSize: 13 }]}>
+              {today}
+            </Text>
+          </View>
+        }
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="calendar-outline" size={48} color={colors.mutedForeground} />
@@ -180,12 +193,14 @@ export const EmployeeHomeScreen: React.FC = () => {
           </View>
         }
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  header: { paddingHorizontal: spacing.md, paddingTop: spacing.lg, paddingBottom: spacing.sm },
+  headerTitle: { fontSize: 22, marginBottom: spacing.xs },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   list: { padding: spacing.md, gap: spacing.sm },
   empty: { alignItems: 'center', paddingTop: 80 },

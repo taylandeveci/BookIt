@@ -56,6 +56,7 @@ export function useBackendNotificationSync(invalidateKeys: QueryKey[] = []) {
         createdAt: new Date(n.createdAt),
         read: false,
         userId: user.id,
+        reservationId: n.reservationId,
       });
     });
 

@@ -23,6 +23,7 @@ export const reviewService = {
       businessId,
       rating: data.rating,
       comment: data.comment,
+      employeeSatisfaction: data.employeeSatisfaction ?? null,
     });
   },
 

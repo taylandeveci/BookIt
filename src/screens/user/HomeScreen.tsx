@@ -28,6 +28,7 @@ import { useNotificationStore, NotificationType } from '../../store/notification
 import notificationService from '../../services/notificationService';
 import { useBackendNotificationSync } from '../../hooks/useBackendNotificationSync';
 import { calculateDistance } from '../../lib/calculateDistance';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -358,6 +359,27 @@ export const HomeScreen: React.FC = () => {
   const showVisitAgain = loadingAppointments || visitAgainItems.length > 0;
   const firstName = user?.name?.split(' ')[0] ?? '';
 
+  const upcomingAppointment = useMemo(() => {
+    const now = Date.now();
+    return appointments
+      .filter((a) => (a.status === 'APPROVED' || a.status === 'PENDING') && a.startTime && new Date(a.startTime).getTime() > now)
+      .sort((a, b) => new Date(a.startTime!).getTime() - new Date(b.startTime!).getTime())[0] ?? null;
+  }, [appointments]);
+
+  const upcomingCountdown = useMemo(() => {
+    if (!upcomingAppointment?.startTime) return null;
+    const diffMs = new Date(upcomingAppointment.startTime).getTime() - Date.now();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 60) return t('appointmentDetail.minutesLeft', { count: diffMin });
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return t('appointmentDetail.hoursLeft', { count: diffHr });
+    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+    if (new Date(upcomingAppointment.startTime).toDateString() === tomorrow.toDateString()) {
+      return t('appointmentDetail.tomorrow');
+    }
+    return new Date(upcomingAppointment.startTime).toLocaleDateString('tr-TR', { weekday: 'long' });
+  }, [upcomingAppointment, t]);
+
   // Card renderers
   const handleBusinessPress = useCallback(
     (businessId: string) => {
@@ -392,7 +414,7 @@ export const HomeScreen: React.FC = () => {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       {toast && <Toast message={toast.message} type={toast.type} onHide={() => setToast(null)} />}
 
       <ScrollView
@@ -420,6 +442,32 @@ export const HomeScreen: React.FC = () => {
             ) : null}
           </View>
         </View>
+
+        {/* Yaklaşan randevu kartı */}
+        {upcomingAppointment ? (
+          <TouchableOpacity
+            style={[styles.upcomingCard, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '40' }, shadows.sm]}
+            onPress={() => navigation.navigate('AppointmentDetail', { appointmentId: upcomingAppointment.id })}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.upcomingIconWrap, { backgroundColor: colors.primary }]}>
+              <Ionicons name="calendar" size={18} color="#FFFFFF" />
+            </View>
+            <View style={styles.upcomingBody}>
+              <Text style={[typography.bodySemiBold, { color: colors.foreground, fontSize: typography.sizes.sm }]} numberOfLines={1}>
+                {upcomingAppointment.business?.name ?? t('appointments.unknownBusiness')}
+              </Text>
+              <Text style={[typography.body, { color: colors.mutedForeground, fontSize: typography.sizes.xs }]} numberOfLines={1}>
+                {upcomingAppointment.service?.name ?? ''}{upcomingAppointment.startTime ? ` · ${new Date(upcomingAppointment.startTime).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}` : ''}
+              </Text>
+            </View>
+            <View style={[styles.upcomingBadge, { backgroundColor: colors.primary }]}>
+              <Text style={[typography.bodySemiBold, { color: '#FFFFFF', fontSize: typography.sizes.xs }]}>
+                {upcomingCountdown}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ) : null}
 
         {/* Location banner */}
         {!userCoords && !locationDenied ? (
@@ -634,7 +682,7 @@ export const HomeScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -666,6 +714,31 @@ const styles = StyleSheet.create({
     marginLeft: spacing.md,
   },
 
+  upcomingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: spacing.xl,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    gap: spacing.md,
+  },
+  upcomingIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  upcomingBody: { flex: 1, gap: 2 },
+  upcomingBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.pill,
+    flexShrink: 0,
+  },
   locationBanner: {
     flexDirection: 'row',
     alignItems: 'center',

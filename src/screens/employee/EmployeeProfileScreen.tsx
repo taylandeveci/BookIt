@@ -163,7 +163,7 @@ export const EmployeeProfileScreen: React.FC = () => {
   if (!user) return null;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['bottom']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       {toast && <Toast message={toast.message} type={toast.type} onHide={() => setToast(null)} />}
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

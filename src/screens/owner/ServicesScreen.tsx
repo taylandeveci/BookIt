@@ -7,6 +7,7 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../../lib/queryKeys';
@@ -14,7 +15,6 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ownerService } from '../../services/ownerService';
-import { businessService } from '../../services/businessService';
 import { useAuthStore } from '../../store/authStore';
 import { Service, Business } from '../../types';
 import { useTheme } from '../../theme/useTheme';
@@ -27,8 +27,9 @@ import {
   Toast,
 } from '../../components';
 import { useTranslation } from 'react-i18next';
-import { spacing, typography } from '../../theme/theme';
+import { spacing, typography, borderRadius } from '../../theme/theme';
 import { formatCurrency } from '../../lib/formatCurrency';
+import { Ionicons } from '@expo/vector-icons';
 
 const serviceSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -62,8 +63,10 @@ export const ServicesScreen: React.FC = () => {
   const { data: ownerData, isLoading: loading } = useQuery({
     queryKey: queryKeys.owner.services,
     queryFn: async () => {
-      const biz = await ownerService.getBusiness();
-      const svcs = await businessService.getServices(biz.id);
+      const [biz, svcs] = await Promise.all([
+        ownerService.getBusiness(),
+        ownerService.getOwnerServices(),
+      ]);
       return { business: biz as Business, services: Array.isArray(svcs) ? svcs : [] as Service[] };
     },
     enabled: !!user,
@@ -230,6 +233,14 @@ export const ServicesScreen: React.FC = () => {
         >
           {item.durationMin} {t('common.min')}
         </Text>
+        {typeof item.bookingCount === 'number' && (
+          <View style={[styles.bookingBadge, { backgroundColor: colors.primary + '15' }]}>
+            <Ionicons name="calendar-outline" size={11} color={colors.primary} />
+            <Text style={[typography.body, { fontSize: typography.sizes.xs, color: colors.primary, marginLeft: 3 }]}>
+              {item.bookingCount} {t('services.bookings')}
+            </Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.serviceActions}>
@@ -253,26 +264,26 @@ export const ServicesScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
         <LoadingSpinner />
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!business) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
         <EmptyState
           icon="business"
           title={t('services.noBusiness')}
           description={t('services.noBusinessDesc')}
         />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       {toast && (
         <Toast
           message={toast.message}
@@ -409,7 +420,7 @@ export const ServicesScreen: React.FC = () => {
           </Card>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -447,6 +458,14 @@ const styles = StyleSheet.create({
   },
   serviceDuration: {
     fontSize: typography.sizes.sm,
+  },
+  bookingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: borderRadius.pill,
+    marginLeft: 'auto',
   },
   serviceActions: {
     flexDirection: 'row',

@@ -32,6 +32,7 @@ import { RootStackParamList } from '../../navigation/RootNavigator';
 import { setAppLanguage, getCurrentLanguage } from '../../localization/i18n';
 import { useNotificationStore } from '../../store/notificationStore';
 import { BUSINESS_TAG_DEFS } from '../../constants/businessTags';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -64,7 +65,7 @@ function formatCoordinates(lat?: number | null, lng?: number | null): string {
 }
 
 export const OwnerProfileScreen: React.FC = () => {
-  const { colors } = useTheme();
+  const { colors, shadows } = useTheme();
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const user = useAuthStore((state) => state.user);
@@ -305,7 +306,9 @@ export const OwnerProfileScreen: React.FC = () => {
   }
 
   return (
-    <ScrollView
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
+      <ScrollView
+      showsVerticalScrollIndicator={false}
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.content}
     >
@@ -328,7 +331,7 @@ export const OwnerProfileScreen: React.FC = () => {
         </Text>
 
         <TouchableOpacity
-          style={styles.infoRow}
+          style={[styles.infoRow, { borderBottomColor: colors.border }]}
           onPress={() => navigation.navigate('EditProfile')}
           activeOpacity={0.7}
         >
@@ -344,7 +347,7 @@ export const OwnerProfileScreen: React.FC = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.infoRow}
+          style={[styles.infoRow, { borderBottomColor: colors.border }]}
           onPress={() => navigation.navigate('EditProfile')}
           activeOpacity={0.7}
         >
@@ -359,7 +362,7 @@ export const OwnerProfileScreen: React.FC = () => {
           </View>
         </TouchableOpacity>
 
-        <View style={styles.infoRow}>
+        <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
           <Text style={[styles.label, typography.bodySemiBold, { color: colors.mutedForeground }]}>
             {t('ownerProfile.roleLabel')}
           </Text>
@@ -395,7 +398,7 @@ export const OwnerProfileScreen: React.FC = () => {
               >
                 <ImageWithFallback uri={item.url} style={styles.photoThumbImage} iconSize={32} />
                 <TouchableOpacity
-                  style={styles.photoDeleteBtn}
+                  style={[styles.photoDeleteBtn, { backgroundColor: colors.card + 'D9' }]}
                   onPress={() => handleDeletePhoto(item)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
@@ -552,7 +555,7 @@ export const OwnerProfileScreen: React.FC = () => {
                     pointerEvents="none"
                   >
                     <Marker coordinate={previewCoordinates} tracksViewChanges={false}>
-                      <View style={styles.markerContainer}>
+                      <View style={[styles.markerContainer, shadows.sm]}>
                         <Ionicons name="location" size={20} color="#4A5E6A" />
                       </View>
                     </Marker>
@@ -660,7 +663,7 @@ export const OwnerProfileScreen: React.FC = () => {
                         coordinate={{ latitude: business.locationLat, longitude: business.locationLng }}
                         tracksViewChanges={false}
                       >
-                        <View style={styles.markerContainer}>
+                        <View style={[styles.markerContainer, shadows.sm]}>
                           <Ionicons name="location" size={20} color="#4A5E6A" />
                         </View>
                       </Marker>
@@ -742,7 +745,7 @@ export const OwnerProfileScreen: React.FC = () => {
             {t('ownerProfile.employeeSettings')}
           </Text>
 
-          <View style={styles.infoRow}>
+          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
             <Text style={[styles.label, typography.bodySemiBold, { color: colors.mutedForeground }]}>
               {t('ownerProfile.joinCode')}
             </Text>
@@ -944,7 +947,7 @@ export const OwnerProfileScreen: React.FC = () => {
 
           {viewingMedia && (
             <TouchableOpacity
-              style={styles.photoModalDelete}
+              style={[styles.photoModalDelete, { backgroundColor: colors.destructive }]}
               onPress={() => handleDeletePhoto(viewingMedia)}
             >
               <Ionicons name="trash-outline" size={20} color={colors.card} />
@@ -954,6 +957,7 @@ export const OwnerProfileScreen: React.FC = () => {
         </View>
       </Modal>
     </ScrollView>
+    </SafeAreaView>
   );
 };
 
